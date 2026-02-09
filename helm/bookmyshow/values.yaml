@@ -1,0 +1,274 @@
+# Default values for BookMyShow Helm chart
+
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# -- Common
+replicaCount: 2
+namespace: bookmyshow
+
+image:
+  registry: docker.io
+  pullPolicy: IfNotPresent
+
+# -- API Gateway
+apiGateway:
+  enabled: true
+  name: api-gateway
+  replicaCount: 2
+  image:
+    repository: bookmyshow/api-gateway
+    tag: latest
+  port: 8080
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPU: 70
+
+# -- User Service
+userService:
+  enabled: true
+  name: user-service
+  replicaCount: 2
+  image:
+    repository: bookmyshow/user-service
+    tag: latest
+  port: 8081
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPU: 70
+
+# -- Movie Service
+movieService:
+  enabled: true
+  name: movie-service
+  replicaCount: 2
+  image:
+    repository: bookmyshow/movie-service
+    tag: latest
+  port: 8082
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPU: 70
+
+# -- Booking Service (higher resources - critical path)
+bookingService:
+  enabled: true
+  name: booking-service
+  replicaCount: 3
+  image:
+    repository: bookmyshow/booking-service
+    tag: latest
+  port: 8083
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "768Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1536Mi"
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPU: 60
+
+# -- Payment Service
+paymentService:
+  enabled: true
+  name: payment-service
+  replicaCount: 2
+  image:
+    repository: bookmyshow/payment-service
+    tag: latest
+  port: 8084
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPU: 70
+
+# -- Notification Service
+notificationService:
+  enabled: true
+  name: notification-service
+  replicaCount: 2
+  image:
+    repository: bookmyshow/notification-service
+    tag: latest
+  port: 8085
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "384Mi"
+    limits:
+      cpu: "400m"
+      memory: "768Mi"
+
+# -- Frontend
+frontend:
+  enabled: true
+  name: frontend
+  replicaCount: 2
+  image:
+    repository: bookmyshow/frontend
+    tag: latest
+  port: 3000
+  env:
+    NEXT_PUBLIC_API_URL: "https://api.bookmyshow.local"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "300m"
+      memory: "512Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPU: 70
+
+# -- Ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    frontend: bookmyshow.local
+    api: api.bookmyshow.local
+  tls:
+    enabled: true
+    secretName: bookmyshow-tls
+
+# -- Database config
+database:
+  host: postgres-service
+  port: 5432
+  name: bookmyshow
+  username: bookmyshow_user
+  password: ""
+
+# -- Redis config
+redisConfig:
+  host: redis-service
+  port: 6379
+
+# -- Kafka config
+kafkaConfig:
+  bootstrapServers: kafka-service:9092
+
+# -- Elasticsearch config
+elasticsearchConfig:
+  host: elasticsearch-service
+  port: 9200
+
+# -- JWT config
+jwt:
+  secret: ""
+  expirationMs: 86400000
+
+# -- External dependencies
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "admin_password"
+    username: "bookmyshow_user"
+    password: "bookmyshow_pass"
+    database: "bookmyshow"
+  primary:
+    persistence:
+      size: 20Gi
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 5Gi
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+kafka:
+  enabled: true
+  listeners:
+    client:
+      protocol: PLAINTEXT
+  kraft:
+    enabled: true
+  controller:
+    replicaCount: 1
+  persistence:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+elasticsearch:
+  enabled: true
+  master:
+    replicaCount: 1
+    persistence:
+      size: 10Gi
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1000m"
+        memory: "2Gi"

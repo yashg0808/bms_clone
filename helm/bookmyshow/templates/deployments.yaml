@@ -1,0 +1,91 @@
+{{- $services := list
+  (dict "name" .Values.apiGateway.name "enabled" .Values.apiGateway.enabled "image" .Values.apiGateway.image "port" .Values.apiGateway.port "replicas" .Values.apiGateway.replicaCount "resources" .Values.apiGateway.resources "hpa" .Values.apiGateway.hpa)
+  (dict "name" .Values.userService.name "enabled" .Values.userService.enabled "image" .Values.userService.image "port" .Values.userService.port "replicas" .Values.userService.replicaCount "resources" .Values.userService.resources "hpa" .Values.userService.hpa)
+  (dict "name" .Values.movieService.name "enabled" .Values.movieService.enabled "image" .Values.movieService.image "port" .Values.movieService.port "replicas" .Values.movieService.replicaCount "resources" .Values.movieService.resources "hpa" .Values.movieService.hpa)
+  (dict "name" .Values.bookingService.name "enabled" .Values.bookingService.enabled "image" .Values.bookingService.image "port" .Values.bookingService.port "replicas" .Values.bookingService.replicaCount "resources" .Values.bookingService.resources "hpa" .Values.bookingService.hpa)
+  (dict "name" .Values.paymentService.name "enabled" .Values.paymentService.enabled "image" .Values.paymentService.image "port" .Values.paymentService.port "replicas" .Values.paymentService.replicaCount "resources" .Values.paymentService.resources "hpa" .Values.paymentService.hpa)
+  (dict "name" .Values.notificationService.name "enabled" .Values.notificationService.enabled "image" .Values.notificationService.image "port" .Values.notificationService.port "replicas" .Values.notificationService.replicaCount "resources" .Values.notificationService.resources)
+-}}
+{{- range $svc := $services }}
+{{- if $svc.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $svc.name }}
+  labels:
+    app: {{ $svc.name }}
+    {{- include "bookmyshow.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $svc.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $svc.name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ $svc.port | quote }}
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+        - name: {{ $svc.name }}
+          image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ $svc.port }}
+          env:
+            {{- include "bookmyshow.commonEnv" $ | nindent 12 }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: {{ $svc.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: {{ $svc.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $svc.name }}
+  labels:
+    app: {{ $svc.name }}
+spec:
+  selector:
+    app: {{ $svc.name }}
+  ports:
+    - port: {{ $svc.port }}
+      targetPort: {{ $svc.port }}
+  type: ClusterIP
+{{- if and $svc.hpa $svc.hpa.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $svc.name }}-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $svc.name }}
+  minReplicas: {{ $svc.hpa.minReplicas }}
+  maxReplicas: {{ $svc.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $svc.hpa.targetCPU }}
+{{- end }}
+{{- end }}
+{{- end }}

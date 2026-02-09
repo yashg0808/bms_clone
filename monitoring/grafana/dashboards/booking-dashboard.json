@@ -1,0 +1,90 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "panels": [
+    {
+      "title": "Seat Lock Attempts / sec",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "rate(seat_lock_attempts_total[5m])", "legendFormat": "Attempts" },
+        { "expr": "rate(seat_lock_successes_total[5m])", "legendFormat": "Success" },
+        { "expr": "rate(seat_lock_failures_total[5m])", "legendFormat": "Failures" }
+      ]
+    },
+    {
+      "title": "Active Bookings",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "active_bookings_count", "legendFormat": "Active" }
+      ]
+    },
+    {
+      "title": "Expired Locks Cleaned / min",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        { "expr": "rate(expired_locks_cleaned_total[5m]) * 60", "legendFormat": "Cleaned" }
+      ]
+    },
+    {
+      "title": "Booking Confirmation Latency (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, rate(booking_confirmation_duration_seconds_bucket[5m]))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.50, rate(booking_confirmation_duration_seconds_bucket[5m]))", "legendFormat": "p50" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "title": "Bookings by Status",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "sum by (status) (bookings_total)", "legendFormat": "{{ status }}" }
+      ]
+    },
+    {
+      "title": "Payment Success Rate",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "sum(rate(payment_successes_total[5m])) / sum(rate(payment_attempts_total[5m]))",
+          "legendFormat": "Success Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "orange", "value": 0.9 },
+              { "color": "green", "value": 0.95 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Revenue (Last 24h)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "sum(increase(payment_amount_total[24h]))", "legendFormat": "Revenue" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyINR" } }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["bookmyshow", "booking"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "BookMyShow - Booking & Payments",
+  "uid": "bms-booking",
+  "version": 1
+}

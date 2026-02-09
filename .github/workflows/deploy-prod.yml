@@ -1,0 +1,80 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.13.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name bookmyshow-cluster --region ${{ secrets.AWS_REGION }}
+
+      - name: Deploy with Helm
+        run: |
+          VALUES_FILE="helm/bookmyshow/values.yaml"
+          if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            VALUES_FILE="helm/bookmyshow/values-dev.yaml"
+          fi
+
+          helm upgrade --install bookmyshow ./helm/bookmyshow \
+            -f $VALUES_FILE \
+            --namespace bookmyshow \
+            --create-namespace \
+            --set database.password=${{ secrets.DB_PASSWORD }} \
+            --set jwt.secret=${{ secrets.JWT_SECRET }} \
+            --set apiGateway.image.tag=${{ github.sha }} \
+            --set userService.image.tag=${{ github.sha }} \
+            --set movieService.image.tag=${{ github.sha }} \
+            --set bookingService.image.tag=${{ github.sha }} \
+            --set paymentService.image.tag=${{ github.sha }} \
+            --set notificationService.image.tag=${{ github.sha }} \
+            --set frontend.image.tag=${{ github.sha }} \
+            --wait --timeout=600s
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n bookmyshow
+          kubectl rollout status deployment/api-gateway -n bookmyshow --timeout=300s
+          kubectl rollout status deployment/booking-service -n bookmyshow --timeout=300s
+
+      - name: Notify on success
+        if: success()
+        run: echo "✅ Deployment to ${{ github.event.inputs.environment }} successful!"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed. Rolling back..."
+          helm rollback bookmyshow -n bookmyshow

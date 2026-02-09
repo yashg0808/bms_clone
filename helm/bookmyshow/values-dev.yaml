@@ -1,0 +1,78 @@
+# Development values override
+# Usage: helm install bookmyshow ./helm/bookmyshow -f helm/bookmyshow/values-dev.yaml
+
+replicaCount: 1
+
+apiGateway:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+userService:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+movieService:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+bookingService:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+paymentService:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+notificationService:
+  replicaCount: 1
+
+frontend:
+  replicaCount: 1
+  hpa:
+    enabled: false
+  env:
+    NEXT_PUBLIC_API_URL: "http://localhost:8080"
+
+ingress:
+  enabled: false
+
+postgresql:
+  primary:
+    persistence:
+      size: 5Gi
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+
+redis:
+  master:
+    persistence:
+      size: 1Gi
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+
+kafka:
+  persistence:
+    size: 2Gi
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+
+elasticsearch:
+  master:
+    replicaCount: 1
+    persistence:
+      size: 5Gi
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
