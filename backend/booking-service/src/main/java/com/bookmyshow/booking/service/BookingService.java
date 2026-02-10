@@ -3,6 +3,7 @@ package com.bookmyshow.booking.service;
 import com.bookmyshow.booking.dto.BookingResponse;
 import com.bookmyshow.booking.dto.LockSeatsRequest;
 import com.bookmyshow.booking.dto.LockSeatsResponse;
+import com.bookmyshow.booking.dto.ShowSeatDTO;
 import com.bookmyshow.booking.exception.BookingExpiredException;
 import com.bookmyshow.booking.exception.InvalidLockTokenException;
 import com.bookmyshow.booking.exception.SeatUnavailableException;
@@ -23,7 +24,9 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -72,6 +75,10 @@ public class BookingService {
         // Fetch locked seats for pricing
         List<ShowSeat> lockedSeats = showSeatRepository.findByShowIdAndIdIn(request.getShowId(), request.getSeatIds());
 
+        // Fetch seat layout info (row, number, type) from the seats table
+        Map<UUID, ShowSeatDTO> seatInfoMap = mapSeatInfoByShowSeatId(
+                showSeatRepository.findSeatInfoByShowSeatIds(request.getSeatIds()));
+
         // Calculate total
         BigDecimal totalAmount = lockedSeats.stream()
                 .map(ShowSeat::getPrice)
@@ -100,13 +107,14 @@ public class BookingService {
 
         booking = bookingRepository.save(booking);
 
-        // Create booking seat records
+        // Create booking seat records with real seat info
         for (ShowSeat showSeat : lockedSeats) {
+            ShowSeatDTO info = seatInfoMap.get(showSeat.getId());
             BookingSeat bookingSeat = BookingSeat.builder()
                     .showSeatId(showSeat.getId())
-                    .seatNumber(showSeat.getSeatId().toString().substring(0, 8))
-                    .seatRow("-")
-                    .seatType("REGULAR")
+                    .seatNumber(info != null ? info.getSeatNumber() : "?")
+                    .seatRow(info != null ? info.getSeatRow() : "?")
+                    .seatType(info != null ? info.getSeatType() : "REGULAR")
                     .price(showSeat.getPrice())
                     .build();
             booking.addBookingSeat(bookingSeat);
@@ -116,10 +124,16 @@ public class BookingService {
 
         // Build response
         List<LockSeatsResponse.LockedSeatInfo> seatInfos = lockedSeats.stream()
-                .map(ss -> LockSeatsResponse.LockedSeatInfo.builder()
+                .map(ss -> {
+                    ShowSeatDTO info = seatInfoMap.get(ss.getId());
+                    return LockSeatsResponse.LockedSeatInfo.builder()
                         .seatId(ss.getId())
+                        .seatRow(info != null ? info.getSeatRow() : "?")
+                        .seatNumber(info != null ? info.getSeatNumber() : "?")
+                        .seatType(info != null ? info.getSeatType() : "REGULAR")
                         .price(ss.getPrice())
-                        .build())
+                        .build();
+                })
                 .collect(Collectors.toList());
 
         log.info("Booking created - bookingNumber: {}, showId: {}, seats: {}, total: {}",
@@ -270,11 +284,12 @@ public class BookingService {
     }
 
     /**
-     * Get seat availability for a show.
+     * Get seat availability for a show with full layout info.
      */
     @Transactional(readOnly = true)
-    public List<ShowSeat> getShowSeats(UUID showId) {
-        return showSeatRepository.findByShowId(showId);
+    public List<ShowSeatDTO> getShowSeats(UUID showId) {
+        List<Object[]> rows = showSeatRepository.findShowSeatsWithSeatInfo(showId);
+        return rows.stream().map(this::mapRowToShowSeatDTO).collect(Collectors.toList());
     }
 
     /**
@@ -286,6 +301,26 @@ public class BookingService {
     }
 
     // ---- Private helpers ----
+
+    private ShowSeatDTO mapRowToShowSeatDTO(Object[] row) {
+        return ShowSeatDTO.builder()
+                .id((UUID) row[0])
+                .showId((UUID) row[1])
+                .seatId((UUID) row[2])
+                .status((String) row[3])
+                .price((BigDecimal) row[4])
+                .seatRow((String) row[5])
+                .seatNumber((String) row[6])
+                .seatType((String) row[7])
+                .columnNumber(((Number) row[8]).intValue())
+                .build();
+    }
+
+    private Map<UUID, ShowSeatDTO> mapSeatInfoByShowSeatId(List<Object[]> rows) {
+        return rows.stream()
+                .map(this::mapRowToShowSeatDTO)
+                .collect(Collectors.toMap(ShowSeatDTO::getId, Function.identity()));
+    }
 
     private String generateBookingNumber() {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));

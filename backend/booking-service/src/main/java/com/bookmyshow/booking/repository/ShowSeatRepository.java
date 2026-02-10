@@ -1,5 +1,6 @@
 package com.bookmyshow.booking.repository;
 
+import com.bookmyshow.booking.dto.ShowSeatDTO;
 import com.bookmyshow.booking.model.ShowSeat;
 import com.bookmyshow.booking.model.SeatStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -38,4 +39,32 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
 
     @Query("SELECT COUNT(ss) FROM ShowSeat ss WHERE ss.showId = :showId AND ss.status = :status")
     long countByShowIdAndStatus(@Param("showId") UUID showId, @Param("status") SeatStatus status);
+
+    /**
+     * Fetch show seats joined with seat layout info (row, number, type, column).
+     */
+    @Query(nativeQuery = true, value =
+            "SELECT ss.id, ss.show_id AS showId, ss.seat_id AS seatId, " +
+            "CAST(ss.status AS TEXT) AS status, ss.price, " +
+            "s.row_name AS seatRow, s.seat_number AS seatNumber, " +
+            "CAST(s.seat_type AS TEXT) AS seatType, s.column_number AS columnNumber " +
+            "FROM show_seats ss " +
+            "JOIN seats s ON s.id = ss.seat_id " +
+            "WHERE ss.show_id = :showId " +
+            "ORDER BY s.row_name, s.column_number")
+    List<Object[]> findShowSeatsWithSeatInfo(@Param("showId") UUID showId);
+
+    /**
+     * Fetch seat info for specific show_seat IDs (used during lock/booking).
+     */
+    @Query(nativeQuery = true, value =
+            "SELECT ss.id, ss.show_id AS showId, ss.seat_id AS seatId, " +
+            "CAST(ss.status AS TEXT) AS status, ss.price, " +
+            "s.row_name AS seatRow, s.seat_number AS seatNumber, " +
+            "CAST(s.seat_type AS TEXT) AS seatType, s.column_number AS columnNumber " +
+            "FROM show_seats ss " +
+            "JOIN seats s ON s.id = ss.seat_id " +
+            "WHERE ss.id IN :seatIds " +
+            "ORDER BY s.row_name, s.column_number")
+    List<Object[]> findSeatInfoByShowSeatIds(@Param("seatIds") List<UUID> seatIds);
 }

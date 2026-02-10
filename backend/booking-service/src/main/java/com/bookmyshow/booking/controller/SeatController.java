@@ -1,6 +1,6 @@
 package com.bookmyshow.booking.controller;
 
-import com.bookmyshow.booking.model.ShowSeat;
+import com.bookmyshow.booking.dto.ShowSeatDTO;
 import com.bookmyshow.booking.service.BookingService;
 import com.bookmyshow.shared.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -19,12 +19,12 @@ public class SeatController {
     private final BookingService bookingService;
 
     /**
-     * Get all seats for a show with their current status.
+     * Get all seats for a show with their current status and layout info.
      * GET /api/v1/seats/show/{showId}
      */
     @GetMapping("/show/{showId}")
-    public ResponseEntity<ApiResponse<List<ShowSeat>>> getShowSeats(@PathVariable UUID showId) {
-        List<ShowSeat> seats = bookingService.getShowSeats(showId);
+    public ResponseEntity<ApiResponse<List<ShowSeatDTO>>> getShowSeats(@PathVariable UUID showId) {
+        List<ShowSeatDTO> seats = bookingService.getShowSeats(showId);
         return ResponseEntity.ok(ApiResponse.success(seats));
     }
 

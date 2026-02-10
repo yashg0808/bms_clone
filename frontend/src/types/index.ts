@@ -62,9 +62,10 @@ export interface ShowSeat {
   seatId: string;
   status: "AVAILABLE" | "LOCKED" | "BOOKED";
   price: number;
-  seatRow?: string;
-  seatNumber?: string;
-  seatType?: string;
+  seatRow: string;
+  seatNumber: string;
+  seatType: string;
+  columnNumber: number;
 }
 
 export interface LockSeatsResponse {
