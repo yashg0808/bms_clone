@@ -83,7 +83,7 @@ export interface ScreenLayoutSection {
 }
 
 export interface LayoutSeat {
-  seatId: string;   // matches seats.id
+  seatId: string; // matches seats.id
   number: string;
   column: number;
 }
@@ -95,8 +95,8 @@ export interface SeatStatusResponse {
 }
 
 export interface SeatStatusEntry {
-  seatId: string;      // matches seats.id (links to layout)
-  showSeatId: string;  // used for lock requests
+  seatId: string; // matches seats.id (links to layout)
+  showSeatId: string; // used for lock requests
   status: "AVAILABLE" | "LOCKED" | "BOOKED";
   price: number;
 }

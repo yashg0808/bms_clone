@@ -82,12 +82,15 @@ export default function SeatSelectionPage() {
 
   useEffect(() => {
     // Fetch show details to get screenId for CDN layout
-    showApi.getShow(showId).then((res) => {
-      const show = res.data?.data;
-      if (show?.screenId) {
-        setScreenId(show.screenId);
-      }
-    }).catch(() => {});
+    showApi
+      .getShow(showId)
+      .then((res) => {
+        const show = res.data?.data;
+        if (show?.screenId) {
+          setScreenId(show.screenId);
+        }
+      })
+      .catch(() => {});
     fetchSeats();
     return () => {
       if (!showGuestForm) clearSeats();
@@ -138,7 +141,11 @@ export default function SeatSelectionPage() {
             const statusRes = await showApi.getSeatStatuses(showId);
             const statusData = statusRes.data?.data;
             if (statusData?.seats) {
-              const merged = mergeLayoutAndStatus(layout, statusData.seats, showId);
+              const merged = mergeLayoutAndStatus(
+                layout,
+                statusData.seats,
+                showId,
+              );
               setSeats(merged);
               return;
             }

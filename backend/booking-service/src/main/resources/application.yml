@@ -70,6 +70,32 @@ management:
     tags:
       application: ${spring.application.name}
 
+geo-sharding:
+  enabled: ${GEO_SHARDING_ENABLED:false}
+  city-region-map: >
+    {
+      'Mumbai': 'south', 'Bengaluru': 'south', 'Hyderabad': 'south',
+      'Chennai': 'south', 'Pune': 'south', 'Kochi': 'south',
+      'Visakhapatnam': 'south', 'Goa': 'south', 'Coimbatore': 'south',
+      'Thiruvananthapuram': 'south', 'Mysuru': 'south',
+      'Delhi': 'north', 'Kolkata': 'north', 'Ahmedabad': 'north',
+      'Jaipur': 'north', 'Lucknow': 'north', 'Chandigarh': 'north',
+      'Indore': 'north', 'Bhopal': 'north', 'Nagpur': 'north',
+      'Surat': 'north', 'Vadodara': 'north', 'Patna': 'north',
+      'Guwahati': 'north', 'Dehradun': 'north'
+    }
+  datasource:
+    north:
+      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME_NORTH:bookmyshow}?stringtype=unspecified
+      username: ${DB_USERNAME:bookmyshow}
+      password: ${DB_PASSWORD:secret123}
+      driver-class-name: org.postgresql.Driver
+    south:
+      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME_SOUTH:bookmyshow}?stringtype=unspecified
+      username: ${DB_USERNAME:bookmyshow}
+      password: ${DB_PASSWORD:secret123}
+      driver-class-name: org.postgresql.Driver
+
 logging:
   level:
     com.bookmyshow.booking: DEBUG

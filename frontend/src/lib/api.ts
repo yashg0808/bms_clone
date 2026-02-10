@@ -10,6 +10,24 @@ const apiClient = axios.create({
   },
 });
 
+// Attach X-City-ID header on every request for geo-shard routing
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const cityStr = localStorage.getItem("bms_city");
+    if (cityStr) {
+      try {
+        const city = JSON.parse(cityStr);
+        if (city?.name) {
+          config.headers["X-City-ID"] = city.name;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }
+  return config;
+});
+
 // ---- Movie API ----
 export const movieApi = {
   getMovies: (params?: { page?: number; size?: number; city?: string }) =>

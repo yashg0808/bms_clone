@@ -52,3 +52,29 @@ logging:
 
 layout:
   output-dir: ${LAYOUT_OUTPUT_DIR:./layouts}
+
+geo-sharding:
+  enabled: ${GEO_SHARDING_ENABLED:false}
+  city-region-map: >
+    {
+      'Mumbai': 'south', 'Bengaluru': 'south', 'Hyderabad': 'south',
+      'Chennai': 'south', 'Pune': 'south', 'Kochi': 'south',
+      'Visakhapatnam': 'south', 'Goa': 'south', 'Coimbatore': 'south',
+      'Thiruvananthapuram': 'south', 'Mysuru': 'south',
+      'Delhi': 'north', 'Kolkata': 'north', 'Ahmedabad': 'north',
+      'Jaipur': 'north', 'Lucknow': 'north', 'Chandigarh': 'north',
+      'Indore': 'north', 'Bhopal': 'north', 'Nagpur': 'north',
+      'Surat': 'north', 'Vadodara': 'north', 'Patna': 'north',
+      'Guwahati': 'north', 'Dehradun': 'north'
+    }
+  datasource:
+    north:
+      url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB_NORTH:bookmyshow}?stringtype=unspecified
+      username: ${POSTGRES_USER:bookmyshow}
+      password: ${POSTGRES_PASSWORD:secret123}
+      driver-class-name: org.postgresql.Driver
+    south:
+      url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB_SOUTH:bookmyshow}?stringtype=unspecified
+      username: ${POSTGRES_USER:bookmyshow}
+      password: ${POSTGRES_PASSWORD:secret123}
+      driver-class-name: org.postgresql.Driver

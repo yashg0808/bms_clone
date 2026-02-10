@@ -49,6 +49,12 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:redis123}
+
+waiting-room:
+  enabled: ${WAITING_ROOM_ENABLED:true}
+  max-threshold: ${WAITING_ROOM_MAX_THRESHOLD:5000}
+  session-ttl-seconds: ${WAITING_ROOM_SESSION_TTL:300}
 
 management:
   endpoints:
