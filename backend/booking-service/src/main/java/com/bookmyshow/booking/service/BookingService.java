@@ -14,9 +14,6 @@ import com.bookmyshow.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +27,10 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * BookingService - Orchestrates the complete booking flow:
+ * BookingService - Orchestrates the complete booking flow (guest model, no authentication):
  *
  * 1. Lock seats → Creates a pending booking
- * 2. Confirm booking → Validates lock, marks seats as BOOKED, publishes Kafka event
+ * 2. Confirm booking → Validates lock, saves guest details, marks seats as BOOKED, publishes Kafka event
  * 3. Cancel booking → Releases seats, updates status
  *
  * Uses SeatLockService for distributed locking and KafkaTemplate for event-driven notifications.
@@ -60,22 +57,17 @@ public class BookingService {
 
     /**
      * Step 1: Lock seats and create a pending booking.
+     * No user authentication required - anyone can lock available seats.
      */
     @Transactional
-    public LockSeatsResponse lockSeatsAndCreateBooking(LockSeatsRequest request, UUID userId) {
+    public LockSeatsResponse lockSeatsAndCreateBooking(LockSeatsRequest request) {
         // Validate seat limit
         if (request.getSeatIds().size() > 10) {
             throw new IllegalArgumentException("Maximum 10 seats can be booked at once");
         }
 
-        // Check if user already has an active booking for this show
-        long activeBookings = bookingRepository.countActiveBookingsByUserAndShow(userId, request.getShowId());
-        if (activeBookings > 0) {
-            throw new IllegalArgumentException("You already have an active booking for this show");
-        }
-
-        // Lock seats via distributed lock service
-        String lockToken = seatLockService.lockSeats(request.getShowId(), request.getSeatIds(), userId);
+        // Lock seats via distributed lock service (no userId needed)
+        String lockToken = seatLockService.lockSeats(request.getShowId(), request.getSeatIds());
 
         // Fetch locked seats for pricing
         List<ShowSeat> lockedSeats = showSeatRepository.findByShowIdAndIdIn(request.getShowId(), request.getSeatIds());
@@ -94,12 +86,11 @@ public class BookingService {
         // Generate booking number
         String bookingNumber = generateBookingNumber();
 
-        // Create booking entity
+        // Create booking entity (guest details will be filled on confirm)
         Booking booking = Booking.builder()
                 .bookingNumber(bookingNumber)
-                .userId(userId)
                 .showId(request.getShowId())
-                .status(BookingStatus.PENDING_PAYMENT)
+                .status(BookingStatus.PENDING)
                 .totalAmount(totalAmount)
                 .convenienceFee(convenienceFee)
                 .finalAmount(finalAmount)
@@ -110,14 +101,12 @@ public class BookingService {
         booking = bookingRepository.save(booking);
 
         // Create booking seat records
-        // Note: In a real scenario, we'd fetch seat metadata (row, number, type) from movie-service
-        // For now, we store the showSeat ID
         for (ShowSeat showSeat : lockedSeats) {
             BookingSeat bookingSeat = BookingSeat.builder()
                     .showSeatId(showSeat.getId())
-                    .seatNumber(showSeat.getSeatId().toString().substring(0, 8)) // Short placeholder until seat details fetched
-                    .seatRow("-") // Would come from seat details via inter-service call
-                    .seatType("REGULAR") // Would come from seat details
+                    .seatNumber(showSeat.getSeatId().toString().substring(0, 8))
+                    .seatRow("-")
+                    .seatType("REGULAR")
                     .price(showSeat.getPrice())
                     .build();
             booking.addBookingSeat(bookingSeat);
@@ -133,11 +122,12 @@ public class BookingService {
                         .build())
                 .collect(Collectors.toList());
 
-        log.info("Booking created - bookingNumber: {}, showId: {}, userId: {}, seats: {}, total: {}",
-                bookingNumber, request.getShowId(), userId, request.getSeatIds().size(), finalAmount);
+        log.info("Booking created - bookingNumber: {}, showId: {}, seats: {}, total: {}",
+                bookingNumber, request.getShowId(), request.getSeatIds().size(), finalAmount);
 
         return LockSeatsResponse.builder()
                 .lockToken(lockToken)
+                .bookingId(booking.getId())
                 .showId(request.getShowId())
                 .lockedSeats(seatInfos)
                 .totalAmount(finalAmount)
@@ -146,22 +136,18 @@ public class BookingService {
     }
 
     /**
-     * Step 2: Confirm booking after payment.
-     * Validates lock token, marks seats as BOOKED, publishes Kafka event.
+     * Step 2: Confirm booking with guest details.
+     * Validates lock token, saves guest info, marks seats as BOOKED, publishes Kafka event.
      */
     @Transactional
-    public BookingResponse confirmBooking(UUID bookingId, String lockToken, UUID userId) {
+    public BookingResponse confirmBooking(UUID bookingId, String lockToken,
+                                          String guestName, String guestEmail, String guestPhone) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
 
-        // Validate ownership
-        if (!booking.getUserId().equals(userId)) {
-            throw new InvalidLockTokenException("You are not authorized to confirm this booking");
-        }
-
         // Validate booking status
-        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
-            throw new IllegalStateException("Booking is not in PENDING_PAYMENT state. Current: " + booking.getStatus());
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalStateException("Booking is not in PENDING state. Current: " + booking.getStatus());
         }
 
         // Validate lock token
@@ -173,12 +159,12 @@ public class BookingService {
         if (booking.getExpiresAt() != null && LocalDateTime.now().isAfter(booking.getExpiresAt())) {
             booking.setStatus(BookingStatus.EXPIRED);
             bookingRepository.save(booking);
-            seatLockService.releaseSeats(lockToken, userId);
+            seatLockService.releaseSeats(lockToken);
             throw new BookingExpiredException("Booking has expired. Seats have been released.");
         }
 
         // Validate lock is still valid in Redis
-        List<UUID> lockedSeatIds = seatLockService.validateLockToken(lockToken, userId);
+        List<UUID> lockedSeatIds = seatLockService.validateLockToken(lockToken);
         if (lockedSeatIds == null || lockedSeatIds.isEmpty()) {
             booking.setStatus(BookingStatus.EXPIRED);
             bookingRepository.save(booking);
@@ -197,7 +183,10 @@ public class BookingService {
         }
         showSeatRepository.saveAll(seats);
 
-        // Update booking status
+        // Save guest details and update booking status
+        booking.setGuestName(guestName);
+        booking.setGuestEmail(guestEmail);
+        booking.setGuestPhone(guestPhone);
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setLockToken(null);
         booking = bookingRepository.save(booking);
@@ -208,7 +197,7 @@ public class BookingService {
         // Publish booking confirmed event to Kafka
         publishBookingEvent(KAFKA_TOPIC_BOOKING_CONFIRMED, booking);
 
-        log.info("Booking confirmed - bookingNumber: {}, userId: {}", booking.getBookingNumber(), userId);
+        log.info("Booking confirmed - bookingNumber: {}, guestEmail: {}", booking.getBookingNumber(), guestEmail);
 
         return mapToBookingResponse(booking);
     }
@@ -217,24 +206,20 @@ public class BookingService {
      * Cancel a booking and release seats.
      */
     @Transactional
-    public BookingResponse cancelBooking(UUID bookingId, UUID userId) {
+    public BookingResponse cancelBooking(UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
-
-        if (!booking.getUserId().equals(userId)) {
-            throw new InvalidLockTokenException("You are not authorized to cancel this booking");
-        }
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new IllegalStateException("Booking is already cancelled");
         }
 
-        // If pending payment, release locks
-        if (booking.getStatus() == BookingStatus.PENDING_PAYMENT && booking.getLockToken() != null) {
-            seatLockService.releaseSeats(booking.getLockToken(), userId);
+        // If pending, release locks
+        if (booking.getStatus() == BookingStatus.PENDING && booking.getLockToken() != null) {
+            seatLockService.releaseSeats(booking.getLockToken());
         }
 
-        // If confirmed, need to mark seats available again and initiate refund
+        // If confirmed, mark seats available again
         if (booking.getStatus() == BookingStatus.CONFIRMED) {
             List<BookingSeat> bookingSeats = booking.getBookingSeats();
             List<UUID> seatIds = bookingSeats.stream()
@@ -257,7 +242,7 @@ public class BookingService {
         // Publish cancellation event
         publishBookingEvent(KAFKA_TOPIC_BOOKING_CANCELLED, booking);
 
-        log.info("Booking cancelled - bookingNumber: {}, userId: {}", booking.getBookingNumber(), userId);
+        log.info("Booking cancelled - bookingNumber: {}", booking.getBookingNumber());
 
         return mapToBookingResponse(booking);
     }
@@ -266,13 +251,9 @@ public class BookingService {
      * Get booking by ID.
      */
     @Transactional(readOnly = true)
-    public BookingResponse getBooking(UUID bookingId, UUID userId) {
+    public BookingResponse getBooking(UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
-
-        if (!booking.getUserId().equals(userId)) {
-            throw new InvalidLockTokenException("You are not authorized to view this booking");
-        }
 
         return mapToBookingResponse(booking);
     }
@@ -281,25 +262,11 @@ public class BookingService {
      * Get booking by booking number.
      */
     @Transactional(readOnly = true)
-    public BookingResponse getBookingByNumber(String bookingNumber, UUID userId) {
+    public BookingResponse getBookingByNumber(String bookingNumber) {
         Booking booking = bookingRepository.findByBookingNumber(bookingNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "bookingNumber", bookingNumber));
 
-        if (!booking.getUserId().equals(userId)) {
-            throw new InvalidLockTokenException("You are not authorized to view this booking");
-        }
-
         return mapToBookingResponse(booking);
-    }
-
-    /**
-     * Get user's booking history with pagination.
-     */
-    @Transactional(readOnly = true)
-    public Page<BookingResponse> getUserBookings(UUID userId, int page, int size) {
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return bookingRepository.findByUserId(userId, pageRequest)
-                .map(this::mapToBookingResponse);
     }
 
     /**
@@ -340,7 +307,9 @@ public class BookingService {
         return BookingResponse.builder()
                 .id(booking.getId())
                 .bookingNumber(booking.getBookingNumber())
-                .userId(booking.getUserId())
+                .guestName(booking.getGuestName())
+                .guestEmail(booking.getGuestEmail())
+                .guestPhone(booking.getGuestPhone())
                 .showId(booking.getShowId())
                 .status(booking.getStatus())
                 .totalAmount(booking.getTotalAmount())
@@ -357,8 +326,10 @@ public class BookingService {
     private void publishBookingEvent(String topic, Booking booking) {
         try {
             String eventPayload = String.format(
-                    "{\"bookingId\":\"%s\",\"bookingNumber\":\"%s\",\"userId\":\"%s\",\"showId\":\"%s\",\"status\":\"%s\",\"finalAmount\":%s,\"seatCount\":%d}",
-                    booking.getId(), booking.getBookingNumber(), booking.getUserId(),
+                    "{\"bookingId\":\"%s\",\"bookingNumber\":\"%s\",\"guestEmail\":\"%s\",\"guestName\":\"%s\",\"showId\":\"%s\",\"status\":\"%s\",\"finalAmount\":%s,\"seatCount\":%d}",
+                    booking.getId(), booking.getBookingNumber(),
+                    booking.getGuestEmail() != null ? booking.getGuestEmail() : "",
+                    booking.getGuestName() != null ? booking.getGuestName() : "",
                     booking.getShowId(), booking.getStatus(), booking.getFinalAmount(),
                     booking.getBookingSeats().size()
             );

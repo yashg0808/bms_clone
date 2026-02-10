@@ -6,10 +6,8 @@ import com.bookmyshow.booking.dto.LockSeatsRequest;
 import com.bookmyshow.booking.dto.LockSeatsResponse;
 import com.bookmyshow.booking.service.BookingService;
 import com.bookmyshow.shared.dto.ApiResponse;
-import com.bookmyshow.shared.dto.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,27 +27,24 @@ public class BookingController {
      */
     @PostMapping("/lock")
     public ResponseEntity<ApiResponse<LockSeatsResponse>> lockSeats(
-            @Valid @RequestBody LockSeatsRequest request,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId
+            @Valid @RequestBody LockSeatsRequest request
     ) {
-        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
-        LockSeatsResponse response = bookingService.lockSeatsAndCreateBooking(request, userId);
+        LockSeatsResponse response = bookingService.lockSeatsAndCreateBooking(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Seats locked successfully"));
     }
 
     /**
-     * Step 2: Confirm booking after payment.
+     * Step 2: Confirm booking with guest details.
      * POST /api/v1/bookings/confirm
      */
     @PostMapping("/confirm")
     public ResponseEntity<ApiResponse<BookingResponse>> confirmBooking(
-            @Valid @RequestBody ConfirmBookingRequest request,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId
+            @Valid @RequestBody ConfirmBookingRequest request
     ) {
-        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         BookingResponse response = bookingService.confirmBooking(
-                request.getBookingId(), request.getLockToken(), userId
+                request.getBookingId(), request.getLockToken(),
+                request.getGuestName(), request.getGuestEmail(), request.getGuestPhone()
         );
         return ResponseEntity.ok(ApiResponse.success(response, "Booking confirmed successfully"));
     }
@@ -60,11 +55,9 @@ public class BookingController {
      */
     @PostMapping("/{bookingId}/cancel")
     public ResponseEntity<ApiResponse<BookingResponse>> cancelBooking(
-            @PathVariable UUID bookingId,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId
+            @PathVariable UUID bookingId
     ) {
-        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
-        BookingResponse response = bookingService.cancelBooking(bookingId, userId);
+        BookingResponse response = bookingService.cancelBooking(bookingId);
         return ResponseEntity.ok(ApiResponse.success(response, "Booking cancelled successfully"));
     }
 
@@ -74,11 +67,9 @@ public class BookingController {
      */
     @GetMapping("/{bookingId}")
     public ResponseEntity<ApiResponse<BookingResponse>> getBooking(
-            @PathVariable UUID bookingId,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId
+            @PathVariable UUID bookingId
     ) {
-        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
-        BookingResponse response = bookingService.getBooking(bookingId, userId);
+        BookingResponse response = bookingService.getBooking(bookingId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -88,35 +79,9 @@ public class BookingController {
      */
     @GetMapping("/number/{bookingNumber}")
     public ResponseEntity<ApiResponse<BookingResponse>> getBookingByNumber(
-            @PathVariable String bookingNumber,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId
+            @PathVariable String bookingNumber
     ) {
-        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
-        BookingResponse response = bookingService.getBookingByNumber(bookingNumber, userId);
+        BookingResponse response = bookingService.getBookingByNumber(bookingNumber);
         return ResponseEntity.ok(ApiResponse.success(response));
-    }
-
-    /**
-     * Get user's booking history.
-     * GET /api/v1/bookings/my
-     */
-    @GetMapping("/my")
-    public ResponseEntity<ApiResponse<PageResponse<BookingResponse>>> getMyBookings(
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
-        Page<BookingResponse> bookings = bookingService.getUserBookings(userId, page, size);
-        PageResponse<BookingResponse> pageResponse = PageResponse.<BookingResponse>builder()
-                .content(bookings.getContent())
-                .page(bookings.getNumber())
-                .size(bookings.getSize())
-                .totalElements(bookings.getTotalElements())
-                .totalPages(bookings.getTotalPages())
-                .first(bookings.isFirst())
-                .last(bookings.isLast())
-                .build();
-        return ResponseEntity.ok(ApiResponse.success(pageResponse));
     }
 }

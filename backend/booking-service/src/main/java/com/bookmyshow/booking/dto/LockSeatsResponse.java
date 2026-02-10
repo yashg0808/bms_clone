@@ -17,6 +17,7 @@ import java.util.UUID;
 public class LockSeatsResponse {
 
     private String lockToken;
+    private UUID bookingId;
     private UUID showId;
     private List<LockedSeatInfo> lockedSeats;
     private BigDecimal totalAmount;

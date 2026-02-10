@@ -69,6 +69,7 @@ export interface ShowSeat {
 
 export interface LockSeatsResponse {
   lockToken: string;
+  bookingId: string;
   showId: string;
   lockedSeats: {
     seatId: string;
@@ -84,15 +85,12 @@ export interface LockSeatsResponse {
 export interface Booking {
   id: string;
   bookingNumber: string;
-  userId: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
   showId: string;
   show?: Show;
-  status:
-    | "PENDING_PAYMENT"
-    | "CONFIRMED"
-    | "CANCELLED"
-    | "EXPIRED"
-    | "REFUNDED";
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED";
   totalAmount: number;
   convenienceFee: number;
   discount: number;
@@ -106,23 +104,6 @@ export interface Booking {
     seatType: string;
     price: number;
   }[];
-  createdAt: string;
-}
-
-export interface Payment {
-  id: string;
-  bookingId: string;
-  amount: number;
-  status:
-    | "INITIATED"
-    | "PROCESSING"
-    | "SUCCESS"
-    | "FAILED"
-    | "REFUND_INITIATED"
-    | "REFUNDED";
-  paymentMethod: string;
-  gatewayOrderId: string;
-  gatewayPaymentId: string;
   createdAt: string;
 }
 

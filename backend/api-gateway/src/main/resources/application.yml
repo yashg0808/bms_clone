@@ -7,22 +7,7 @@ spring:
 
   cloud:
     gateway:
-      default-filters:
-        - name: AuthenticationFilter
       routes:
-        # User Service Routes
-        - id: user-service-auth
-          uri: http://${USER_SERVICE_HOST:localhost}:${USER_SERVICE_PORT:8081}
-          predicates:
-            - Path=/api/v1/auth/**
-          filters:
-            - RewritePath=/api/v1/auth/(?<segment>.*), /api/v1/auth/${segment}
-
-        - id: user-service-users
-          uri: http://${USER_SERVICE_HOST:localhost}:${USER_SERVICE_PORT:8081}
-          predicates:
-            - Path=/api/v1/users/**
-
         # Movie Service Routes
         - id: movie-service-movies
           uri: http://${MOVIE_SERVICE_HOST:localhost}:${MOVIE_SERVICE_PORT:8085}
@@ -55,24 +40,10 @@ spring:
           predicates:
             - Path=/api/v1/seats/**
 
-        # Payment Service Routes
-        - id: payment-service
-          uri: http://${PAYMENT_SERVICE_HOST:localhost}:${PAYMENT_SERVICE_PORT:8084}
-          predicates:
-            - Path=/api/v1/payments/**
-
-        - id: webhook-service
-          uri: http://${PAYMENT_SERVICE_HOST:localhost}:${PAYMENT_SERVICE_PORT:8084}
-          predicates:
-            - Path=/api/v1/webhooks/**
-
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-
-jwt:
-  secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvckpXVFRva2VuR2VuZXJhdGlvbjEyMzQ1Njc4OTA=}
 
 management:
   endpoints:

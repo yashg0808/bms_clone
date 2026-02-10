@@ -21,47 +21,36 @@ else
     PSQL_CMD="psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME"
 fi
 
-echo "[1/8] Seeding cities..."
+echo "[1/7] Seeding cities..."
 $PSQL_CMD < database/seeds/cities.sql
 echo "✅ Cities seeded"
 
-echo "[2/8] Seeding users..."
-$PSQL_CMD < database/seeds/users.sql
-echo "✅ Users seeded"
-
-echo "[3/8] Seeding movies..."
+echo "[2/7] Seeding movies..."
 $PSQL_CMD < database/seeds/movies.sql
 echo "✅ Movies seeded"
 
-echo "[4/8] Seeding theaters (+ screens + seats)..."
+echo "[3/7] Seeding theaters (+ screens + seats)..."
 $PSQL_CMD < database/seeds/theaters.sql
 echo "✅ Theaters seeded"
 
-echo "[5/8] Seeding shows..."
+echo "[4/7] Seeding shows..."
 $PSQL_CMD < database/seeds/shows.sql
 echo "✅ Shows seeded"
 
-echo "[6/8] Seeding show seats..."
+echo "[5/7] Seeding show seats..."
 $PSQL_CMD < database/seeds/show_seats.sql
 echo "✅ Show seats seeded"
 
-echo "[7/8] Seeding coupons..."
+echo "[6/7] Seeding coupons..."
 $PSQL_CMD < database/seeds/coupons.sql
 echo "✅ Coupons seeded"
 
-echo "[8/8] Seeding bookings, payments, reviews, audit log..."
+echo "[7/7] Seeding bookings & reviews..."
 $PSQL_CMD < database/seeds/bookings.sql
 $PSQL_CMD < database/seeds/reviews.sql
-echo "✅ Bookings, payments, reviews & audit log seeded"
+echo "✅ Bookings & reviews seeded"
 
 echo ""
 echo "=========================================="
 echo "  ✅ Database fully seeded!"
-echo "=========================================="
-echo ""
-echo "Test accounts (password for all: Test@1234):"
-echo "  Admin:    admin@bookmyshow.com"
-echo "  Customer: rahul@example.com"
-echo "  Customer: sneha@example.com"
-echo "  Customer: test@example.com"
-echo "=========================================="
+echo "==========================================" 

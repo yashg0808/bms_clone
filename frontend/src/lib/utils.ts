@@ -29,7 +29,3 @@ export function formatTime(timeString: string): string {
   const displayHour = hour % 12 || 12;
   return `${displayHour}:${minutes} ${ampm}`;
 }
-
-export function generateIdempotencyKey(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}

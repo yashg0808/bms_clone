@@ -55,7 +55,9 @@ export const bookingApi = {
   confirmBooking: (data: {
     bookingId: string;
     lockToken: string;
-    couponId?: string;
+    guestName: string;
+    guestEmail: string;
+    guestPhone: string;
   }) => apiClient.post("/api/v1/bookings/confirm", data),
 
   cancelBooking: (bookingId: string) =>
@@ -64,27 +66,8 @@ export const bookingApi = {
   getBooking: (bookingId: string) =>
     apiClient.get(`/api/v1/bookings/${bookingId}`),
 
-  getMyBookings: (params?: { page?: number; size?: number }) =>
-    apiClient.get("/api/v1/bookings/my", { params }),
-};
-
-// ---- Payment API ----
-export const paymentApi = {
-  initiatePayment: (data: {
-    bookingId: string;
-    amount: number;
-    paymentMethod: string;
-    idempotencyKey: string;
-  }) => apiClient.post("/api/v1/payments/initiate", data),
-
-  verifyPayment: (data: {
-    paymentId: string;
-    gatewayPaymentId: string;
-    gatewaySignature: string;
-  }) => apiClient.post("/api/v1/payments/verify", data),
-
-  getPayment: (paymentId: string) =>
-    apiClient.get(`/api/v1/payments/${paymentId}`),
+  getBookingByNumber: (bookingNumber: string) =>
+    apiClient.get(`/api/v1/bookings/number/${bookingNumber}`),
 };
 
 export default apiClient;

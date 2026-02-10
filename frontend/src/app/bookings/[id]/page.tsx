@@ -18,10 +18,9 @@ import toast from "react-hot-toast";
 
 const statusColors: Record<string, string> = {
   CONFIRMED: "bg-green-100 text-green-700 border-green-200",
-  PENDING_PAYMENT: "bg-amber-100 text-amber-700 border-amber-200",
+  PENDING: "bg-amber-100 text-amber-700 border-amber-200",
   CANCELLED: "bg-red-100 text-red-700 border-red-200",
   EXPIRED: "bg-gray-100 text-gray-500 border-gray-200",
-  REFUNDED: "bg-blue-100 text-blue-700 border-blue-200",
 };
 
 export default function BookingDetailPage() {
@@ -53,7 +52,7 @@ export default function BookingDetailPage() {
     setCancelling(true);
     try {
       await bookingApi.cancelBooking(bookingId);
-      toast.success("Booking cancelled. Refund will be processed.");
+      toast.success("Booking cancelled. Seats have been released.");
       fetchBooking();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to cancel booking");

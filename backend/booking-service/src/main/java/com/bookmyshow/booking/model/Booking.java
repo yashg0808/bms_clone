@@ -35,16 +35,22 @@ public class Booking {
     @Column(name = "booking_number", unique = true, nullable = false)
     private String bookingNumber;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
-
     @Column(name = "show_id", nullable = false)
     private UUID showId;
+
+    @Column(name = "guest_name")
+    private String guestName;
+
+    @Column(name = "guest_email")
+    private String guestEmail;
+
+    @Column(name = "guest_phone")
+    private String guestPhone;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private BookingStatus status = BookingStatus.PENDING_PAYMENT;
+    private BookingStatus status = BookingStatus.PENDING;
 
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
@@ -59,9 +65,6 @@ public class Booking {
 
     @Column(name = "final_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal finalAmount;
-
-    @Column(name = "coupon_id")
-    private UUID couponId;
 
     @Column(name = "lock_token")
     private String lockToken;

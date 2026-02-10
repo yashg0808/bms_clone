@@ -8,22 +8,12 @@ apiGateway:
   hpa:
     enabled: false
 
-userService:
-  replicaCount: 1
-  hpa:
-    enabled: false
-
 movieService:
   replicaCount: 1
   hpa:
     enabled: false
 
 bookingService:
-  replicaCount: 1
-  hpa:
-    enabled: false
-
-paymentService:
   replicaCount: 1
   hpa:
     enabled: false

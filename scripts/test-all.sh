@@ -15,7 +15,7 @@ cd backend/shared
 mvn clean install -q -DskipTests
 
 # Test each backend service
-for service in user-service movie-service booking-service payment-service notification-service; do
+for service in movie-service booking-service notification-service; do
     echo ""
     echo "Testing $service..."
     TOTAL=$((TOTAL + 1))

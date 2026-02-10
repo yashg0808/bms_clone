@@ -13,8 +13,6 @@ data:
   KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
   ELASTICSEARCH_HOST: "elasticsearch-service"
   ELASTICSEARCH_PORT: "9200"
-  USER_SERVICE_URL: "http://user-service:8081"
   MOVIE_SERVICE_URL: "http://movie-service:8082"
   BOOKING_SERVICE_URL: "http://booking-service:8083"
-  PAYMENT_SERVICE_URL: "http://payment-service:8084"
   NOTIFICATION_SERVICE_URL: "http://notification-service:8085"

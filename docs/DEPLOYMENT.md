@@ -19,6 +19,7 @@ docker compose logs -f booking-service
 ```
 
 For production-like settings:
+
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
@@ -26,6 +27,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ### Option 2: Kubernetes with Helm (Production)
 
 #### Prerequisites
+
 - Kubernetes cluster (EKS, GKE, AKS, or local with minikube)
 - Helm 3.x installed
 - kubectl configured
@@ -35,7 +37,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ```bash
 # Build all backend services
-for service in user-service movie-service booking-service payment-service notification-service api-gateway; do
+for service in movie-service booking-service notification-service api-gateway; do
   cd backend/$service
   mvn clean package -DskipTests
   docker build -t bookmyshow/$service:latest .
@@ -66,15 +68,13 @@ helm install bookmyshow . \
   -f values-dev.yaml \
   --namespace bookmyshow \
   --create-namespace \
-  --set database.password=$DB_PASSWORD \
-  --set jwt.secret=$JWT_SECRET
+  --set database.password=$DB_PASSWORD
 
 # Deploy to production
 helm install bookmyshow . \
   --namespace bookmyshow \
   --create-namespace \
-  --set database.password=$DB_PASSWORD \
-  --set jwt.secret=$JWT_SECRET
+  --set database.password=$DB_PASSWORD
 ```
 
 #### Step 3: Verify Deployment
@@ -108,11 +108,14 @@ kubectl apply -f k8s/ingress.yaml
 ## Scaling
 
 ### Horizontal Pod Autoscaler
+
 All services have HPA configured. The booking service scales more aggressively:
+
 - **Booking Service:** 3–15 replicas, 60% CPU target
 - **Other Services:** 2–8 replicas, 70% CPU target
 
 ### Manual Scaling
+
 ```bash
 kubectl scale deployment booking-service --replicas=5 -n bookmyshow
 ```
@@ -130,15 +133,17 @@ kubectl port-forward svc/grafana 3001:3000 -n monitoring
 ```
 
 ### Key Dashboards
+
 - **Service Overview:** Health, request rates, response times, error rates
-- **Booking & Payments:** Seat locks, booking flow, payment success rates, revenue
+- **Booking:** Seat locks, booking flow, confirmation rates
 
 ### Alerts
+
 Configured in `monitoring/prometheus/alerts/`:
+
 - Service down
 - High response time (p95 > 2s)
 - High error rate (> 5%)
-- Payment failure rate (> 10%)
 - DB connection pool exhaustion
 - Redis memory usage
 
@@ -147,27 +152,32 @@ Configured in `monitoring/prometheus/alerts/`:
 ### Common Issues
 
 **Services can't connect to DB:**
+
 ```bash
-kubectl logs deployment/user-service -n bookmyshow | grep -i "connection"
+kubectl logs deployment/booking-service -n bookmyshow | grep -i "connection"
 kubectl get svc postgres-service -n bookmyshow
 ```
 
 **Kafka consumer lag:**
+
 ```bash
 kubectl exec -it kafka-0 -n bookmyshow -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --all-groups
 ```
 
 **Seat lock issues:**
+
 ```bash
 kubectl exec -it redis-master-0 -n bookmyshow -- redis-cli KEYS "seat-lock:*"
 ```
 
 ### Rolling Restart
+
 ```bash
 kubectl rollout restart deployment/booking-service -n bookmyshow
 ```
 
 ### Rollback
+
 ```bash
 helm rollback bookmyshow -n bookmyshow
 ```
@@ -175,13 +185,14 @@ helm rollback bookmyshow -n bookmyshow
 ## CI/CD
 
 Three GitHub Actions workflows:
+
 1. **backend-ci.yml** — Tests & builds all backend services on push
 2. **frontend-ci.yml** — Lints, type-checks, builds frontend on push
 3. **deploy-prod.yml** — Manual trigger deployment to staging/production
 
 ### Required GitHub Secrets
+
 - `DOCKER_USERNAME` / `DOCKER_PASSWORD`
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION`
 - `DB_PASSWORD`
-- `JWT_SECRET`
 - `API_URL`

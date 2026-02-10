@@ -69,20 +69,6 @@ groups:
           summary: "Kafka consumer lag is high"
           description: "Consumer lag is {{ $value }} messages."
 
-  - name: payment_alerts
-    rules:
-      - alert: PaymentFailureRate
-        expr: |
-          sum(rate(payment_failures_total[5m]))
-          /
-          sum(rate(payment_attempts_total[5m])) > 0.1
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Payment failure rate exceeds 10%"
-          description: "Payment failure rate is {{ $value | humanizePercentage }}."
-
   - name: infrastructure_alerts
     rules:
       - alert: PostgresConnectionPoolExhausted

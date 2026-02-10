@@ -34,28 +34,6 @@ apiGateway:
     maxReplicas: 10
     targetCPU: 70
 
-# -- User Service
-userService:
-  enabled: true
-  name: user-service
-  replicaCount: 2
-  image:
-    repository: bookmyshow/user-service
-    tag: latest
-  port: 8081
-  resources:
-    requests:
-      cpu: "250m"
-      memory: "512Mi"
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
-  hpa:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 8
-    targetCPU: 70
-
 # -- Movie Service
 movieService:
   enabled: true
@@ -99,28 +77,6 @@ bookingService:
     minReplicas: 3
     maxReplicas: 15
     targetCPU: 60
-
-# -- Payment Service
-paymentService:
-  enabled: true
-  name: payment-service
-  replicaCount: 2
-  image:
-    repository: bookmyshow/payment-service
-    tag: latest
-  port: 8084
-  resources:
-    requests:
-      cpu: "250m"
-      memory: "512Mi"
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
-  hpa:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 8
-    targetCPU: 70
 
 # -- Notification Service
 notificationService:
@@ -199,11 +155,6 @@ kafkaConfig:
 elasticsearchConfig:
   host: elasticsearch-service
   port: 9200
-
-# -- JWT config
-jwt:
-  secret: ""
-  expirationMs: 86400000
 
 # -- External dependencies
 postgresql:

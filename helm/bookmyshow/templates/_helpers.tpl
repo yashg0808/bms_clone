@@ -43,9 +43,4 @@ Common environment variables
   value: {{ .Values.redisConfig.port | quote }}
 - name: KAFKA_BOOTSTRAP_SERVERS
   value: {{ .Values.kafkaConfig.bootstrapServers | quote }}
-- name: JWT_SECRET
-  valueFrom:
-    secretKeyRef:
-      name: {{ .Release.Name }}-secrets
-      key: jwt-secret
 {{- end -}}

@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -25,43 +24,49 @@ public class NotificationService {
 
     /**
      * Process a booking confirmed event.
+     * Sends confirmation email to the guest's email address.
      */
     public void handleBookingConfirmed(String eventPayload) {
         try {
             JsonNode event = objectMapper.readTree(eventPayload);
             UUID bookingId = UUID.fromString(event.get("bookingId").asText());
             String bookingNumber = event.get("bookingNumber").asText();
-            UUID userId = UUID.fromString(event.get("userId").asText());
+            String guestEmail = event.has("guestEmail") ? event.get("guestEmail").asText() : "";
+            String guestName = event.has("guestName") ? event.get("guestName").asText() : "Guest";
             String finalAmount = event.get("finalAmount").asText();
             int seatCount = event.get("seatCount").asInt();
 
             // Create and save notification record
             Notification notification = Notification.builder()
-                    .userId(userId)
                     .type(NotificationType.BOOKING_CONFIRMED)
                     .channel(NotificationChannel.EMAIL)
                     .subject("Booking Confirmed - " + bookingNumber)
-                    .body(buildBookingConfirmedBody(bookingNumber, finalAmount, seatCount))
-                    .recipient(userId.toString()) // In production, fetch user email
+                    .body(buildBookingConfirmedBody(bookingNumber, guestName, finalAmount, seatCount))
+                    .recipient(guestEmail)
                     .bookingId(bookingId)
                     .status(NotificationStatus.PENDING)
                     .build();
 
             notification = notificationRepository.save(notification);
 
-            // Send email
-            try {
-                emailService.sendSimpleEmail(
-                        notification.getRecipient(),
-                        notification.getSubject(),
-                        notification.getBody()
-                );
+            // Send email if guest email is available
+            if (guestEmail != null && !guestEmail.isEmpty()) {
+                try {
+                    emailService.sendSimpleEmail(
+                            guestEmail,
+                            notification.getSubject(),
+                            notification.getBody()
+                    );
+                    notification.setStatus(NotificationStatus.SENT);
+                    notification.setSentAt(LocalDateTime.now());
+                } catch (Exception e) {
+                    notification.setStatus(NotificationStatus.FAILED);
+                    notification.setErrorMessage(e.getMessage());
+                    log.error("Failed to send booking confirmation email: {}", e.getMessage());
+                }
+            } else {
                 notification.setStatus(NotificationStatus.SENT);
-                notification.setSentAt(LocalDateTime.now());
-            } catch (Exception e) {
-                notification.setStatus(NotificationStatus.FAILED);
-                notification.setErrorMessage(e.getMessage());
-                log.error("Failed to send booking confirmation email: {}", e.getMessage());
+                log.info("No guest email provided, skipping email for booking: {}", bookingNumber);
             }
 
             notificationRepository.save(notification);
@@ -80,32 +85,35 @@ public class NotificationService {
             JsonNode event = objectMapper.readTree(eventPayload);
             UUID bookingId = UUID.fromString(event.get("bookingId").asText());
             String bookingNumber = event.get("bookingNumber").asText();
-            UUID userId = UUID.fromString(event.get("userId").asText());
+            String guestEmail = event.has("guestEmail") ? event.get("guestEmail").asText() : "";
 
             Notification notification = Notification.builder()
-                    .userId(userId)
                     .type(NotificationType.BOOKING_CANCELLED)
                     .channel(NotificationChannel.EMAIL)
                     .subject("Booking Cancelled - " + bookingNumber)
                     .body(buildBookingCancelledBody(bookingNumber))
-                    .recipient(userId.toString())
+                    .recipient(guestEmail != null ? guestEmail : "")
                     .bookingId(bookingId)
                     .status(NotificationStatus.PENDING)
                     .build();
 
             notification = notificationRepository.save(notification);
 
-            try {
-                emailService.sendSimpleEmail(
-                        notification.getRecipient(),
-                        notification.getSubject(),
-                        notification.getBody()
-                );
+            if (guestEmail != null && !guestEmail.isEmpty()) {
+                try {
+                    emailService.sendSimpleEmail(
+                            guestEmail,
+                            notification.getSubject(),
+                            notification.getBody()
+                    );
+                    notification.setStatus(NotificationStatus.SENT);
+                    notification.setSentAt(LocalDateTime.now());
+                } catch (Exception e) {
+                    notification.setStatus(NotificationStatus.FAILED);
+                    notification.setErrorMessage(e.getMessage());
+                }
+            } else {
                 notification.setStatus(NotificationStatus.SENT);
-                notification.setSentAt(LocalDateTime.now());
-            } catch (Exception e) {
-                notification.setStatus(NotificationStatus.FAILED);
-                notification.setErrorMessage(e.getMessage());
             }
 
             notificationRepository.save(notification);
@@ -116,52 +124,9 @@ public class NotificationService {
         }
     }
 
-    /**
-     * Process a payment success event.
-     */
-    public void handlePaymentSuccess(String eventPayload) {
-        try {
-            JsonNode event = objectMapper.readTree(eventPayload);
-            UUID bookingId = UUID.fromString(event.get("bookingId").asText());
-            UUID userId = UUID.fromString(event.get("userId").asText());
-            String amount = event.get("amount").asText();
-
-            Notification notification = Notification.builder()
-                    .userId(userId)
-                    .type(NotificationType.PAYMENT_SUCCESS)
-                    .channel(NotificationChannel.EMAIL)
-                    .subject("Payment Successful - ₹" + amount)
-                    .body(buildPaymentSuccessBody(amount, bookingId.toString()))
-                    .recipient(userId.toString())
-                    .bookingId(bookingId)
-                    .status(NotificationStatus.PENDING)
-                    .build();
-
-            notification = notificationRepository.save(notification);
-
-            try {
-                emailService.sendSimpleEmail(
-                        notification.getRecipient(),
-                        notification.getSubject(),
-                        notification.getBody()
-                );
-                notification.setStatus(NotificationStatus.SENT);
-                notification.setSentAt(LocalDateTime.now());
-            } catch (Exception e) {
-                notification.setStatus(NotificationStatus.FAILED);
-                notification.setErrorMessage(e.getMessage());
-            }
-
-            notificationRepository.save(notification);
-
-        } catch (JsonProcessingException e) {
-            log.error("Failed to parse payment success event: {}", e.getMessage());
-        }
-    }
-
     // ---- Template builders ----
 
-    private String buildBookingConfirmedBody(String bookingNumber, String amount, int seatCount) {
+    private String buildBookingConfirmedBody(String bookingNumber, String guestName, String amount, int seatCount) {
         return String.format("""
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -169,7 +134,7 @@ public class NotificationService {
                     <h1>🎬 Booking Confirmed!</h1>
                 </div>
                 <div style="padding: 20px;">
-                    <p>Your booking has been confirmed successfully!</p>
+                    <p>Hi %s, your booking has been confirmed successfully!</p>
                     <table style="width: 100%%; border-collapse: collapse;">
                         <tr><td style="padding: 8px; font-weight: bold;">Booking Number:</td><td style="padding: 8px;">%s</td></tr>
                         <tr><td style="padding: 8px; font-weight: bold;">Seats:</td><td style="padding: 8px;">%d</td></tr>
@@ -183,7 +148,7 @@ public class NotificationService {
                 </div>
             </body>
             </html>
-            """, bookingNumber, seatCount, amount);
+            """, guestName, bookingNumber, seatCount, amount);
     }
 
     private String buildBookingCancelledBody(String bookingNumber) {
@@ -195,26 +160,10 @@ public class NotificationService {
                 </div>
                 <div style="padding: 20px;">
                     <p>Your booking <strong>%s</strong> has been cancelled.</p>
-                    <p>If a payment was made, a refund will be initiated within 5-7 business days.</p>
+                    <p>The seats have been released and are available for others.</p>
                 </div>
             </body>
             </html>
             """, bookingNumber);
-    }
-
-    private String buildPaymentSuccessBody(String amount, String bookingId) {
-        return String.format("""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: #28a745; color: white; padding: 20px; text-align: center;">
-                    <h1>✅ Payment Successful</h1>
-                </div>
-                <div style="padding: 20px;">
-                    <p>Your payment of <strong>₹%s</strong> has been received successfully.</p>
-                    <p>Your booking is being confirmed.</p>
-                </div>
-            </body>
-            </html>
-            """, amount);
     }
 }

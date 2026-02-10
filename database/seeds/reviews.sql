@@ -1,7 +1,8 @@
 -- ============================================
 -- Seed Data: Reviews & Audit Log
 -- ============================================
--- Requires: users, movies to be seeded first.
+-- Requires: movies to be seeded first.
+-- Reviews use placeholder user UUIDs (no FK constraint).
 
 DO $$
 DECLARE
@@ -70,23 +71,23 @@ BEGIN
     -- Seed some Audit Log entries
     -- ============================================
     INSERT INTO audit_log (entity_type, entity_id, action, new_values, performed_by, ip_address) VALUES
-    ('USER', 'a0000000-0000-0000-0000-000000000001', 'CREATE',
-     '{"email":"admin@bookmyshow.com","role":"ADMIN"}',
-     'a0000000-0000-0000-0000-000000000001', '127.0.0.1'),
+    ('MOVIE', (SELECT id FROM movies LIMIT 1), 'CREATE',
+     '{"title":"Sample Movie","language":"Hindi"}',
+     NULL, '127.0.0.1'),
 
-    ('USER', 'a0000000-0000-0000-0000-000000000010', 'CREATE',
-     '{"email":"rahul@example.com","role":"CUSTOMER"}',
+    ('BOOKING', 'a0000000-0000-0000-0000-000000000010', 'CREATE',
+     '{"booking_number":"BMS-SEED-0001","status":"CONFIRMED"}',
      NULL, '192.168.1.100'),
 
-    ('USER', 'a0000000-0000-0000-0000-000000000014', 'UPDATE',
-     '{"status":"ACTIVE","email_verified":false}',
-     'a0000000-0000-0000-0000-000000000014', '10.0.0.55');
+    ('BOOKING', 'a0000000-0000-0000-0000-000000000014', 'CREATE',
+     '{"booking_number":"BMS-SEED-0002","status":"CONFIRMED"}',
+     NULL, '10.0.0.55');
 
     -- Add audit entries for some bookings
     INSERT INTO audit_log (entity_type, entity_id, action, new_values, performed_by, ip_address)
     SELECT 'BOOKING', b.id, 'CREATE',
            json_build_object('booking_number', b.booking_number, 'status', b.status::TEXT, 'final_amount', b.final_amount)::JSONB,
-           b.user_id, '192.168.1.' || (ROW_NUMBER() OVER () + 100)::TEXT
+           NULL, '192.168.1.' || (ROW_NUMBER() OVER () + 100)::TEXT
     FROM bookings b
     LIMIT 10;
 

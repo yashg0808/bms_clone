@@ -20,21 +20,20 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     Optional<Booking> findByBookingNumber(String bookingNumber);
 
-    Page<Booking> findByUserId(UUID userId, Pageable pageable);
-
-    Page<Booking> findByUserIdAndStatus(UUID userId, BookingStatus status, Pageable pageable);
-
     List<Booking> findByShowId(UUID showId);
 
-    @Query("SELECT b FROM Booking b WHERE b.status = 'PENDING_PAYMENT' AND b.expiresAt < :now")
+    Page<Booking> findByGuestEmail(String guestEmail, Pageable pageable);
+
+    Page<Booking> findByGuestPhone(String guestPhone, Pageable pageable);
+
+    @Query("SELECT b FROM Booking b WHERE b.status = 'PENDING' AND b.expiresAt < :now")
     List<Booking> findExpiredBookings(@Param("now") LocalDateTime now);
 
     @Modifying
-    @Query("UPDATE Booking b SET b.status = 'EXPIRED' WHERE b.status = 'PENDING_PAYMENT' AND b.expiresAt < :now")
+    @Query("UPDATE Booking b SET b.status = 'EXPIRED' WHERE b.status = 'PENDING' AND b.expiresAt < :now")
     int expireBookings(@Param("now") LocalDateTime now);
 
-    @Query("SELECT COUNT(b) FROM Booking b WHERE b.userId = :userId AND b.showId = :showId AND b.status IN ('PENDING_PAYMENT', 'CONFIRMED')")
-    long countActiveBookingsByUserAndShow(@Param("userId") UUID userId, @Param("showId") UUID showId);
-
     boolean existsByBookingNumber(String bookingNumber);
+
+    Page<Booking> findAll(Pageable pageable);
 }

@@ -30,8 +30,7 @@ import java.util.concurrent.TimeUnit;
  * 4. Store lock token in Redis with TTL
  * 5. Release distributed lock
  *
- * This ensures that even across multiple service instances, only one user
- * can lock a specific set of seats at a time.
+ * No user authentication required - anyone can lock seats (guest booking model).
  */
 @Slf4j
 @Service
@@ -55,15 +54,14 @@ public class SeatLockService {
     private int distributedLockLeaseSeconds;
 
     /**
-     * Lock seats for a user. Uses Redisson distributed lock to prevent race conditions.
+     * Lock seats. Uses Redisson distributed lock to prevent race conditions.
      *
      * @param showId  the show ID
      * @param seatIds the seat IDs to lock
-     * @param userId  the user requesting the lock
      * @return lock token for subsequent operations
      */
     @Transactional
-    public String lockSeats(UUID showId, List<UUID> seatIds, UUID userId) {
+    public String lockSeats(UUID showId, List<UUID> seatIds) {
         String lockKey = LOCK_KEY_PREFIX + showId;
         RLock lock = redissonClient.getLock(lockKey);
 
@@ -99,12 +97,10 @@ public class SeatLockService {
                 // Generate a unique lock token
                 String lockToken = UUID.randomUUID().toString();
                 LocalDateTime lockedAt = LocalDateTime.now();
-                LocalDateTime expiresAt = lockedAt.plusMinutes(seatLockTimeoutMinutes);
 
                 // Update seat status to LOCKED in database
                 for (ShowSeat seat : requestedSeats) {
                     seat.setStatus(SeatStatus.LOCKED);
-                    seat.setLockedBy(userId);
                     seat.setLockedAt(lockedAt);
                 }
                 showSeatRepository.saveAll(requestedSeats);
@@ -116,11 +112,11 @@ public class SeatLockService {
                     if (seatIdsStr.length() > 0) seatIdsStr.append(",");
                     seatIdsStr.append(seatId);
                 }
-                String tokenValue = showId + "|" + userId + "|" + seatIdsStr;
+                String tokenValue = showId + "|" + seatIdsStr;
                 redisTemplate.opsForValue().set(tokenKey, tokenValue, Duration.ofMinutes(seatLockTimeoutMinutes));
 
-                log.info("Seats locked successfully - showId: {}, userId: {}, seatCount: {}, lockToken: {}",
-                        showId, userId, seatIds.size(), lockToken);
+                log.info("Seats locked successfully - showId: {}, seatCount: {}, lockToken: {}",
+                        showId, seatIds.size(), lockToken);
 
                 return lockToken;
 
@@ -140,10 +136,9 @@ public class SeatLockService {
      * Release previously locked seats.
      *
      * @param lockToken the lock token obtained during locking
-     * @param userId    the user requesting release
      */
     @Transactional
-    public void releaseSeats(String lockToken, UUID userId) {
+    public void releaseSeats(String lockToken) {
         String tokenKey = SEAT_LOCK_TOKEN_PREFIX + lockToken;
         String tokenValue = redisTemplate.opsForValue().get(tokenKey);
 
@@ -154,14 +149,8 @@ public class SeatLockService {
 
         String[] parts = tokenValue.split("\\|");
         UUID showId = UUID.fromString(parts[0]);
-        UUID lockUserId = UUID.fromString(parts[1]);
 
-        if (!lockUserId.equals(userId)) {
-            log.warn("User {} attempted to release lock owned by {}", userId, lockUserId);
-            return;
-        }
-
-        String[] seatIdStrs = parts[2].split(",");
+        String[] seatIdStrs = parts[1].split(",");
         List<UUID> seatIds = new ArrayList<>();
         for (String s : seatIdStrs) {
             seatIds.add(UUID.fromString(s.trim()));
@@ -170,7 +159,7 @@ public class SeatLockService {
         // Release seats in database
         List<ShowSeat> seats = showSeatRepository.findByShowIdAndIdIn(showId, seatIds);
         for (ShowSeat seat : seats) {
-            if (seat.getStatus() == SeatStatus.LOCKED && userId.equals(seat.getLockedBy())) {
+            if (seat.getStatus() == SeatStatus.LOCKED) {
                 seat.setStatus(SeatStatus.AVAILABLE);
                 seat.setLockedBy(null);
                 seat.setLockedAt(null);
@@ -181,17 +170,16 @@ public class SeatLockService {
         // Remove lock token from Redis
         redisTemplate.delete(tokenKey);
 
-        log.info("Seats released - showId: {}, userId: {}, seatCount: {}", showId, userId, seatIds.size());
+        log.info("Seats released - showId: {}, seatCount: {}", showId, seatIds.size());
     }
 
     /**
      * Validate a lock token and return the associated seat IDs.
      *
      * @param lockToken the lock token to validate
-     * @param userId    the user ID to verify ownership
-     * @return list of seat IDs associated with the lock
+     * @return list of seat IDs associated with the lock, or null if invalid/expired
      */
-    public List<UUID> validateLockToken(String lockToken, UUID userId) {
+    public List<UUID> validateLockToken(String lockToken) {
         String tokenKey = SEAT_LOCK_TOKEN_PREFIX + lockToken;
         String tokenValue = redisTemplate.opsForValue().get(tokenKey);
 
@@ -200,13 +188,8 @@ public class SeatLockService {
         }
 
         String[] parts = tokenValue.split("\\|");
-        UUID lockUserId = UUID.fromString(parts[1]);
 
-        if (!lockUserId.equals(userId)) {
-            return null;
-        }
-
-        String[] seatIdStrs = parts[2].split(",");
+        String[] seatIdStrs = parts[1].split(",");
         List<UUID> seatIds = new ArrayList<>();
         for (String s : seatIdStrs) {
             seatIds.add(UUID.fromString(s.trim()));

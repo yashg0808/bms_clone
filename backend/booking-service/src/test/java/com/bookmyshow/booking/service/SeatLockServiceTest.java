@@ -48,7 +48,6 @@ class SeatLockServiceTest {
     private SeatLockService seatLockService;
 
     private UUID showId;
-    private UUID userId;
     private List<UUID> seatIds;
     private List<ShowSeat> availableSeats;
 
@@ -59,7 +58,6 @@ class SeatLockServiceTest {
         ReflectionTestUtils.setField(seatLockService, "distributedLockLeaseSeconds", 10);
 
         showId = UUID.randomUUID();
-        userId = UUID.randomUUID();
         seatIds = List.of(UUID.randomUUID(), UUID.randomUUID());
 
         availableSeats = seatIds.stream()
@@ -87,7 +85,7 @@ class SeatLockServiceTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         // Act
-        String lockToken = seatLockService.lockSeats(showId, seatIds, userId);
+        String lockToken = seatLockService.lockSeats(showId, seatIds);
 
         // Assert
         assertThat(lockToken).isNotNull().isNotEmpty();
@@ -98,7 +96,6 @@ class SeatLockServiceTest {
         // Verify seats were updated to LOCKED
         for (ShowSeat seat : availableSeats) {
             assertThat(seat.getStatus()).isEqualTo(SeatStatus.LOCKED);
-            assertThat(seat.getLockedBy()).isEqualTo(userId);
             assertThat(seat.getLockedAt()).isNotNull();
         }
     }
@@ -116,7 +113,7 @@ class SeatLockServiceTest {
         when(showSeatRepository.findByShowIdAndIdIn(showId, seatIds)).thenReturn(availableSeats);
 
         // Act & Assert
-        assertThatThrownBy(() -> seatLockService.lockSeats(showId, seatIds, userId))
+        assertThatThrownBy(() -> seatLockService.lockSeats(showId, seatIds))
                 .isInstanceOf(SeatUnavailableException.class)
                 .hasMessageContaining("no longer available");
 
@@ -132,7 +129,7 @@ class SeatLockServiceTest {
         when(rLock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(false);
 
         // Act & Assert
-        assertThatThrownBy(() -> seatLockService.lockSeats(showId, seatIds, userId))
+        assertThatThrownBy(() -> seatLockService.lockSeats(showId, seatIds))
                 .isInstanceOf(SeatUnavailableException.class)
                 .hasMessageContaining("High demand");
 
@@ -149,7 +146,7 @@ class SeatLockServiceTest {
         when(showSeatRepository.findByShowIdAndIdIn(showId, seatIds)).thenReturn(List.of(availableSeats.get(0)));
 
         // Act & Assert
-        assertThatThrownBy(() -> seatLockService.lockSeats(showId, seatIds, userId))
+        assertThatThrownBy(() -> seatLockService.lockSeats(showId, seatIds))
                 .isInstanceOf(SeatUnavailableException.class)
                 .hasMessageContaining("do not exist");
     }
@@ -160,12 +157,11 @@ class SeatLockServiceTest {
         // Arrange
         String lockToken = UUID.randomUUID().toString();
         String tokenKey = "seat:lock:token:" + lockToken;
-        String tokenValue = showId + "|" + userId + "|" + seatIds.get(0) + "," + seatIds.get(1);
+        String tokenValue = showId + "|" + seatIds.get(0) + "," + seatIds.get(1);
 
         // Set seats to LOCKED state
         availableSeats.forEach(s -> {
             s.setStatus(SeatStatus.LOCKED);
-            s.setLockedBy(userId);
         });
 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -175,7 +171,7 @@ class SeatLockServiceTest {
         when(redisTemplate.delete(tokenKey)).thenReturn(true);
 
         // Act
-        seatLockService.releaseSeats(lockToken, userId);
+        seatLockService.releaseSeats(lockToken);
 
         // Assert
         for (ShowSeat seat : availableSeats) {
@@ -191,13 +187,13 @@ class SeatLockServiceTest {
         // Arrange
         String lockToken = UUID.randomUUID().toString();
         String tokenKey = "seat:lock:token:" + lockToken;
-        String tokenValue = showId + "|" + userId + "|" + seatIds.get(0) + "," + seatIds.get(1);
+        String tokenValue = showId + "|" + seatIds.get(0) + "," + seatIds.get(1);
 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get(tokenKey)).thenReturn(tokenValue);
 
         // Act
-        List<UUID> result = seatLockService.validateLockToken(lockToken, userId);
+        List<UUID> result = seatLockService.validateLockToken(lockToken);
 
         // Assert
         assertThat(result).hasSize(2);
@@ -213,7 +209,7 @@ class SeatLockServiceTest {
         when(valueOperations.get(anyString())).thenReturn(null);
 
         // Act
-        List<UUID> result = seatLockService.validateLockToken(lockToken, userId);
+        List<UUID> result = seatLockService.validateLockToken(lockToken);
 
         // Assert
         assertThat(result).isNull();

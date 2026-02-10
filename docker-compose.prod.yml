@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   # ============================================
@@ -24,7 +24,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 2G
     networks:
       - bms-prod
@@ -44,7 +44,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1G
     networks:
       - bms-prod
@@ -79,7 +79,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 2G
     networks:
       - bms-prod
@@ -97,7 +97,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 2G
     networks:
       - bms-prod
@@ -116,37 +116,12 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=prod
     depends_on:
-      - user-service
       - movie-service
       - booking-service
-      - payment-service
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
-    networks:
-      - bms-prod
-
-  user-service:
-    build:
-      context: ./backend/user-service
-      dockerfile: Dockerfile
-    container_name: bms-user-service
-    restart: always
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - POSTGRES_HOST=postgres
-      - REDIS_HOST=redis
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 512M
     networks:
       - bms-prod
@@ -169,7 +144,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 512M
     networks:
       - bms-prod
@@ -195,32 +170,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 1G
-    networks:
-      - bms-prod
-
-  payment-service:
-    build:
-      context: ./backend/payment-service
-      dockerfile: Dockerfile
-    container_name: bms-payment-service
-    restart: always
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - POSTGRES_HOST=postgres
-      - REDIS_HOST=redis
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
     networks:
       - bms-prod
 
@@ -239,7 +190,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
     networks:
       - bms-prod
@@ -259,7 +210,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 512M
     networks:
       - bms-prod

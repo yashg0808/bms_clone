@@ -11,8 +11,6 @@ import java.util.UUID;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
-    List<Notification> findByUserId(UUID userId);
-
     List<Notification> findByStatus(NotificationStatus status);
 
     List<Notification> findByStatusAndRetryCountLessThan(NotificationStatus status, int maxRetries);

@@ -58,7 +58,7 @@ echo "✅ Shared module built"
 # Build all services
 echo ""
 echo "Building backend services..."
-for service in user-service movie-service booking-service payment-service notification-service api-gateway; do
+for service in movie-service booking-service notification-service api-gateway; do
     echo "  Building $service..."
     cd ../$service
     mvn clean package -q -DskipTests

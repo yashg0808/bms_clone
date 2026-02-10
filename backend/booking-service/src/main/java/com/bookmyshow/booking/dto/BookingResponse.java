@@ -19,8 +19,10 @@ public class BookingResponse {
 
     private UUID id;
     private String bookingNumber;
-    private UUID userId;
     private UUID showId;
+    private String guestName;
+    private String guestEmail;
+    private String guestPhone;
     private BookingStatus status;
     private BigDecimal totalAmount;
     private BigDecimal convenienceFee;

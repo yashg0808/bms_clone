@@ -1,9 +1,7 @@
 {{- $services := list
   (dict "name" .Values.apiGateway.name "enabled" .Values.apiGateway.enabled "image" .Values.apiGateway.image "port" .Values.apiGateway.port "replicas" .Values.apiGateway.replicaCount "resources" .Values.apiGateway.resources "hpa" .Values.apiGateway.hpa)
-  (dict "name" .Values.userService.name "enabled" .Values.userService.enabled "image" .Values.userService.image "port" .Values.userService.port "replicas" .Values.userService.replicaCount "resources" .Values.userService.resources "hpa" .Values.userService.hpa)
   (dict "name" .Values.movieService.name "enabled" .Values.movieService.enabled "image" .Values.movieService.image "port" .Values.movieService.port "replicas" .Values.movieService.replicaCount "resources" .Values.movieService.resources "hpa" .Values.movieService.hpa)
   (dict "name" .Values.bookingService.name "enabled" .Values.bookingService.enabled "image" .Values.bookingService.image "port" .Values.bookingService.port "replicas" .Values.bookingService.replicaCount "resources" .Values.bookingService.resources "hpa" .Values.bookingService.hpa)
-  (dict "name" .Values.paymentService.name "enabled" .Values.paymentService.enabled "image" .Values.paymentService.image "port" .Values.paymentService.port "replicas" .Values.paymentService.replicaCount "resources" .Values.paymentService.resources "hpa" .Values.paymentService.hpa)
   (dict "name" .Values.notificationService.name "enabled" .Values.notificationService.enabled "image" .Values.notificationService.image "port" .Values.notificationService.port "replicas" .Values.notificationService.replicaCount "resources" .Values.notificationService.resources)
 -}}
 {{- range $svc := $services }}
