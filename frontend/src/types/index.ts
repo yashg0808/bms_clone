@@ -68,6 +68,39 @@ export interface ShowSeat {
   columnNumber: number;
 }
 
+/** Static screen layout (fetched from CDN/static JSON) */
+export interface ScreenLayout {
+  screenId: string;
+  screenName: string;
+  screenType: string;
+  totalSeats: number;
+  sections: ScreenLayoutSection[];
+}
+
+export interface ScreenLayoutSection {
+  type: string;
+  rows: Record<string, LayoutSeat[]>;
+}
+
+export interface LayoutSeat {
+  seatId: string;   // matches seats.id
+  number: string;
+  column: number;
+}
+
+/** Lightweight seat status response (dynamic data only) */
+export interface SeatStatusResponse {
+  showId: string;
+  seats: SeatStatusEntry[];
+}
+
+export interface SeatStatusEntry {
+  seatId: string;      // matches seats.id (links to layout)
+  showSeatId: string;  // used for lock requests
+  status: "AVAILABLE" | "LOCKED" | "BOOKED";
+  price: number;
+}
+
 export interface LockSeatsResponse {
   lockToken: string;
   bookingId: string;

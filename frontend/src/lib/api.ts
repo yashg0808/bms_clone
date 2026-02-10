@@ -43,8 +43,19 @@ export const showApi = {
   getShowSeats: (showId: string) =>
     apiClient.get(`/api/v1/seats/show/${showId}`),
 
+  /** Lightweight status-only endpoint (CDN-decoupled flow) */
+  getSeatStatuses: (showId: string) =>
+    apiClient.get(`/api/v1/seats/status/${showId}`),
+
   getSeatAvailability: (showId: string) =>
     apiClient.get(`/api/v1/seats/show/${showId}/availability`),
+};
+
+// ---- Layout API (simulated CDN) ----
+export const layoutApi = {
+  /** Fetch static screen layout JSON (cached by browser, simulates CDN) */
+  getScreenLayout: (screenId: string) =>
+    apiClient.get(`/layouts/screen-${screenId}.json`),
 };
 
 // ---- Booking API ----

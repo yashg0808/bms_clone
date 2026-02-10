@@ -2,13 +2,51 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { showApi, bookingApi } from "@/lib/api";
-import { ShowSeat } from "@/types";
+import { showApi, bookingApi, layoutApi } from "@/lib/api";
+import type { ShowSeat, ScreenLayout, SeatStatusEntry } from "@/types";
 import { useBookingStore } from "@/store";
 import SeatMap from "@/components/booking/SeatMap";
 import { formatCurrency } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { Clock, CheckCircle, User, Mail, Phone } from "lucide-react";
+
+/**
+ * Merge a static ScreenLayout with dynamic SeatStatusEntries into ShowSeat[] for the SeatMap.
+ * Layout provides: seatRow, seatNumber, seatType, columnNumber
+ * Status provides: status, price, showSeatId (used as the seat "id" for lock requests)
+ */
+function mergeLayoutAndStatus(
+  layout: ScreenLayout,
+  statuses: SeatStatusEntry[],
+  showId: string,
+): ShowSeat[] {
+  // Build a lookup: seatId (template) → status entry
+  const statusMap = new Map<string, SeatStatusEntry>();
+  for (const s of statuses) {
+    statusMap.set(s.seatId, s);
+  }
+
+  const seats: ShowSeat[] = [];
+  for (const section of layout.sections) {
+    for (const [rowName, rowSeats] of Object.entries(section.rows)) {
+      for (const layoutSeat of rowSeats) {
+        const status = statusMap.get(layoutSeat.seatId);
+        seats.push({
+          id: status?.showSeatId ?? layoutSeat.seatId,
+          showId,
+          seatId: layoutSeat.seatId,
+          status: status?.status ?? "AVAILABLE",
+          price: status?.price ?? 0,
+          seatRow: rowName,
+          seatNumber: layoutSeat.number,
+          seatType: section.type,
+          columnNumber: layoutSeat.column,
+        });
+      }
+    }
+  }
+  return seats;
+}
 
 export default function SeatSelectionPage() {
   const params = useParams();
@@ -30,6 +68,10 @@ export default function SeatSelectionPage() {
   const [success, setSuccess] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<any>(null);
 
+  // Cache the static layout so we only fetch it once per screen
+  const [cachedLayout, setCachedLayout] = useState<ScreenLayout | null>(null);
+  const [screenId, setScreenId] = useState<string | null>(null);
+
   // Guest details form state
   const [showGuestForm, setShowGuestForm] = useState(false);
   const [guestName, setGuestName] = useState("");
@@ -39,6 +81,13 @@ export default function SeatSelectionPage() {
   const [totalAmount, setTotalAmount] = useState(0);
 
   useEffect(() => {
+    // Fetch show details to get screenId for CDN layout
+    showApi.getShow(showId).then((res) => {
+      const show = res.data?.data;
+      if (show?.screenId) {
+        setScreenId(show.screenId);
+      }
+    }).catch(() => {});
     fetchSeats();
     return () => {
       if (!showGuestForm) clearSeats();
@@ -76,6 +125,30 @@ export default function SeatSelectionPage() {
 
   async function fetchSeats() {
     try {
+      // Try CDN-decoupled flow: static layout + dynamic status
+      if (screenId || cachedLayout) {
+        try {
+          let layout = cachedLayout;
+          if (!layout && screenId) {
+            const layoutRes = await layoutApi.getScreenLayout(screenId);
+            layout = layoutRes.data as ScreenLayout;
+            setCachedLayout(layout);
+          }
+          if (layout) {
+            const statusRes = await showApi.getSeatStatuses(showId);
+            const statusData = statusRes.data?.data;
+            if (statusData?.seats) {
+              const merged = mergeLayoutAndStatus(layout, statusData.seats, showId);
+              setSeats(merged);
+              return;
+            }
+          }
+        } catch {
+          // CDN layout not available — fall back to full endpoint
+        }
+      }
+
+      // Fallback: full endpoint (layout + status in one call)
       const res = await showApi.getShowSeats(showId);
       setSeats(res.data?.data || []);
     } catch (error) {

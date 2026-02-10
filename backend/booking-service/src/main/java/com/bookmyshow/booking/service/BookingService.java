@@ -3,6 +3,7 @@ package com.bookmyshow.booking.service;
 import com.bookmyshow.booking.dto.BookingResponse;
 import com.bookmyshow.booking.dto.LockSeatsRequest;
 import com.bookmyshow.booking.dto.LockSeatsResponse;
+import com.bookmyshow.booking.dto.SeatStatusResponse;
 import com.bookmyshow.booking.dto.ShowSeatDTO;
 import com.bookmyshow.booking.exception.BookingExpiredException;
 import com.bookmyshow.booking.exception.InvalidLockTokenException;
@@ -345,6 +346,62 @@ public class BookingService {
     @Transactional(readOnly = true)
     public long getAvailableSeatCount(UUID showId) {
         return showSeatRepository.countByShowIdAndStatus(showId, SeatStatus.AVAILABLE);
+    }
+
+    /**
+     * Get lightweight seat statuses for a show (no layout data).
+     * For CDN-decoupled flow: frontend fetches layout from static JSON, status from this method.
+     * Uses the same read-through cache as getShowSeats.
+     */
+    @Transactional(readOnly = true)
+    public SeatStatusResponse getShowSeatStatuses(UUID showId) {
+        // Try Redis cache first
+        Map<String, String> cached = seatCacheService.getShowSeatStatuses(showId);
+
+        if (!cached.isEmpty()) {
+            // Cache HIT — build response from cache
+            List<SeatStatusResponse.SeatStatus> statuses = new ArrayList<>();
+            // We need seatId (template) mapping — cache only has showSeatId. Query lightweight.
+            List<Object[]> rows = showSeatRepository.findShowSeatsWithSeatInfo(showId);
+            for (Object[] row : rows) {
+                UUID showSeatId = (UUID) row[0];
+                UUID seatId = (UUID) row[2];
+                String cachedValue = cached.get(showSeatId.toString());
+                String status;
+                BigDecimal price;
+                if (cachedValue != null) {
+                    String[] parts = cachedValue.split(":", 2);
+                    status = parts[0];
+                    price = parts.length > 1 ? new BigDecimal(parts[1]) : (BigDecimal) row[4];
+                } else {
+                    status = (String) row[3];
+                    price = (BigDecimal) row[4];
+                }
+                statuses.add(SeatStatusResponse.SeatStatus.builder()
+                        .showSeatId(showSeatId)
+                        .seatId(seatId)
+                        .status(status)
+                        .price(price)
+                        .build());
+            }
+            return SeatStatusResponse.builder().showId(showId).seats(statuses).build();
+        }
+
+        // Cache MISS — query DB, populate cache, return
+        List<Object[]> rows = showSeatRepository.findShowSeatsWithSeatInfo(showId);
+        List<ShowSeatDTO> dtoList = rows.stream().map(this::mapRowToShowSeatDTO).collect(Collectors.toList());
+        seatCacheService.populateCache(showId, dtoList);
+
+        List<SeatStatusResponse.SeatStatus> statuses = dtoList.stream()
+                .map(dto -> SeatStatusResponse.SeatStatus.builder()
+                        .showSeatId(dto.getId())
+                        .seatId(dto.getSeatId())
+                        .status(dto.getStatus())
+                        .price(dto.getPrice())
+                        .build())
+                .collect(Collectors.toList());
+
+        return SeatStatusResponse.builder().showId(showId).seats(statuses).build();
     }
 
     // ---- Private helpers ----

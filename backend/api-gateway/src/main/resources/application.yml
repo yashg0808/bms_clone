@@ -29,6 +29,11 @@ spring:
           predicates:
             - Path=/api/v1/shows/**
 
+        - id: movie-service-layouts
+          uri: http://${MOVIE_SERVICE_HOST:localhost}:${MOVIE_SERVICE_PORT:8085}
+          predicates:
+            - Path=/layouts/**
+
         # Booking Service Routes
         - id: booking-service
           uri: http://${BOOKING_SERVICE_HOST:localhost}:${BOOKING_SERVICE_PORT:8083}

@@ -1,5 +1,6 @@
 package com.bookmyshow.booking.controller;
 
+import com.bookmyshow.booking.dto.SeatStatusResponse;
 import com.bookmyshow.booking.dto.ShowSeatDTO;
 import com.bookmyshow.booking.service.BookingService;
 import com.bookmyshow.shared.dto.ApiResponse;
@@ -26,6 +27,17 @@ public class SeatController {
     public ResponseEntity<ApiResponse<List<ShowSeatDTO>>> getShowSeats(@PathVariable UUID showId) {
         List<ShowSeatDTO> seats = bookingService.getShowSeats(showId);
         return ResponseEntity.ok(ApiResponse.success(seats));
+    }
+
+    /**
+     * Get lightweight seat statuses only (no layout data).
+     * For CDN-decoupled frontend: layout from /layouts/screen-{id}.json, status from here.
+     * GET /api/v1/seats/status/{showId}
+     */
+    @GetMapping("/status/{showId}")
+    public ResponseEntity<ApiResponse<SeatStatusResponse>> getShowSeatStatuses(@PathVariable UUID showId) {
+        SeatStatusResponse response = bookingService.getShowSeatStatuses(showId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     /**

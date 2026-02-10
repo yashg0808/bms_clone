@@ -1,0 +1,27 @@
+package com.bookmyshow.movie.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.nio.file.Paths;
+
+/**
+ * Serves static layout JSON files from the filesystem as /layouts/*.
+ * In production, these would be served from a CDN (S3/CloudFront).
+ */
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Value("${layout.output-dir:./layouts}")
+    private String layoutOutputDir;
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String absolutePath = Paths.get(layoutOutputDir).toAbsolutePath().toUri().toString();
+        registry.addResourceHandler("/layouts/**")
+                .addResourceLocations(absolutePath)
+                .setCachePeriod(86400); // 24-hour browser cache (static data)
+    }
+}
