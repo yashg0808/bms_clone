@@ -1,18 +1,3 @@
-export interface User {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  role: "CUSTOMER" | "ADMIN" | "THEATER_OWNER";
-  status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
-  createdAt: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: User;
-}
-
 export interface Movie {
   id: string;
   title: string;
@@ -55,11 +40,17 @@ export interface Screen {
 
 export interface Show {
   id: string;
-  movie: Movie;
-  screen: Screen;
+  movieId: string;
+  movieTitle: string;
+  screenId: string;
+  screenName: string;
+  screenType: string;
+  theaterName: string;
+  theaterId: string;
   showDate: string;
-  showTime: string;
-  regularPrice: number;
+  startTime: string;
+  endTime: string;
+  basePrice: number;
   premiumPrice: number;
   reclinerPrice: number;
   availableSeats: number;
@@ -95,7 +86,13 @@ export interface Booking {
   bookingNumber: string;
   userId: string;
   showId: string;
-  status: "PENDING_PAYMENT" | "CONFIRMED" | "CANCELLED" | "EXPIRED" | "REFUNDED";
+  show?: Show;
+  status:
+    | "PENDING_PAYMENT"
+    | "CONFIRMED"
+    | "CANCELLED"
+    | "EXPIRED"
+    | "REFUNDED";
   totalAmount: number;
   convenienceFee: number;
   discount: number;
@@ -116,7 +113,13 @@ export interface Payment {
   id: string;
   bookingId: string;
   amount: number;
-  status: "INITIATED" | "PROCESSING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED";
+  status:
+    | "INITIATED"
+    | "PROCESSING"
+    | "SUCCESS"
+    | "FAILED"
+    | "REFUND_INITIATED"
+    | "REFUNDED";
   paymentMethod: string;
   gatewayOrderId: string;
   gatewayPaymentId: string;

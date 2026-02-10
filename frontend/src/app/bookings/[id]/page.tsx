@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { bookingApi } from "@/lib/api";
 import { Booking } from "@/types";
-import { useAuthStore } from "@/store";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
 import {
   Ticket,
@@ -29,18 +28,13 @@ export default function BookingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const bookingId = params.id as string;
-  const { isAuthenticated } = useAuthStore();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
     fetchBooking();
-  }, [bookingId, isAuthenticated]);
+  }, [bookingId]);
 
   async function fetchBooking() {
     try {
@@ -62,9 +56,7 @@ export default function BookingDetailPage() {
       toast.success("Booking cancelled. Refund will be processed.");
       fetchBooking();
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Failed to cancel booking"
-      );
+      toast.error(error.response?.data?.message || "Failed to cancel booking");
     } finally {
       setCancelling(false);
     }
@@ -82,8 +74,9 @@ export default function BookingDetailPage() {
 
   const canCancel =
     booking.status === "CONFIRMED" &&
-    booking.showTime &&
-    new Date(booking.showTime) > new Date();
+    booking.show?.showDate &&
+    booking.show?.startTime &&
+    new Date(`${booking.show.showDate}T${booking.show.startTime}`) > new Date();
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -101,10 +94,10 @@ export default function BookingDetailPage() {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold">
-                {booking.movieTitle || "Movie Ticket"}
+                {booking.show?.movieTitle || "Movie Ticket"}
               </h1>
               <p className="mt-1 text-primary-100">
-                {booking.language} • {booking.format || "2D"}
+                {booking.show?.screenType || "Standard"}
               </p>
             </div>
             <span
@@ -130,20 +123,28 @@ export default function BookingDetailPage() {
           <div className="flex items-start gap-3">
             <MapPin className="mt-0.5 h-5 w-5 flex-shrink-0 text-gray-400" />
             <div>
-              <p className="font-semibold">{booking.theaterName}</p>
-              <p className="text-sm text-gray-500">{booking.screenName}</p>
+              <p className="font-semibold">
+                {booking.show?.theaterName || "Theater"}
+              </p>
+              <p className="text-sm text-gray-500">
+                {booking.show?.screenName || "Screen"}
+              </p>
             </div>
           </div>
 
           {/* Date & Time */}
-          {booking.showTime && (
+          {booking.show?.showDate && (
             <div className="flex items-start gap-3">
               <Calendar className="mt-0.5 h-5 w-5 flex-shrink-0 text-gray-400" />
               <div>
-                <p className="font-semibold">{formatDate(booking.showTime)}</p>
-                <p className="text-sm text-gray-500">
-                  {formatTime(booking.showTime)}
+                <p className="font-semibold">
+                  {formatDate(booking.show.showDate)}
                 </p>
+                {booking.show.startTime && (
+                  <p className="text-sm text-gray-500">
+                    {formatTime(booking.show.startTime)}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -153,10 +154,8 @@ export default function BookingDetailPage() {
             <Ticket className="mt-0.5 h-5 w-5 flex-shrink-0 text-gray-400" />
             <div>
               <p className="font-semibold">
-                {booking.seatCount || booking.seats?.length || 0} Ticket
-                {(booking.seatCount || booking.seats?.length || 0) !== 1
-                  ? "s"
-                  : ""}
+                {booking.seats?.length || 0} Ticket
+                {(booking.seats?.length || 0) !== 1 ? "s" : ""}
               </p>
               {booking.seats && booking.seats.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1.5">
@@ -165,7 +164,8 @@ export default function BookingDetailPage() {
                       key={i}
                       className="rounded bg-gray-100 px-2 py-0.5 text-xs font-mono font-medium"
                     >
-                      {seat.seatLabel || seat.seatNumber}
+                      {seat.seatRow}
+                      {seat.seatNumber}
                     </span>
                   ))}
                 </div>
@@ -195,16 +195,16 @@ export default function BookingDetailPage() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Base Amount</span>
-              <span>{formatCurrency(booking.baseAmount || 0)}</span>
+              <span>{formatCurrency(booking.totalAmount || 0)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Convenience Fee</span>
               <span>{formatCurrency(booking.convenienceFee || 0)}</span>
             </div>
-            {booking.discountAmount > 0 && (
+            {booking.discount > 0 && (
               <div className="flex justify-between text-green-600">
                 <span>Discount</span>
-                <span>-{formatCurrency(booking.discountAmount)}</span>
+                <span>-{formatCurrency(booking.discount)}</span>
               </div>
             )}
             <div className="border-t pt-2">

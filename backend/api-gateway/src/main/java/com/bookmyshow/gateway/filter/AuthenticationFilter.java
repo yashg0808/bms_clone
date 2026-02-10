@@ -46,45 +46,8 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
-            String path = exchange.getRequest().getURI().getPath();
-
-            // Skip authentication for public endpoints
-            if (isPublicEndpoint(path)) {
-                return chain.filter(exchange);
-            }
-
-            // Check for Authorization header
-            if (!exchange.getRequest().getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
-                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                return exchange.getResponse().setComplete();
-            }
-
-            String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                return exchange.getResponse().setComplete();
-            }
-
-            String token = authHeader.substring(7);
-
-            try {
-                Claims claims = validateToken(token);
-                String userId = claims.getSubject();
-                String role = claims.get("role", String.class);
-
-                // Add user info as headers for downstream services
-                ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                        .header("X-User-Id", userId)
-                        .header("X-User-Role", role != null ? role : "CUSTOMER")
-                        .build();
-
-                return chain.filter(exchange.mutate().request(mutatedRequest).build());
-
-            } catch (Exception e) {
-                log.warn("JWT validation failed: {}", e.getMessage());
-                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                return exchange.getResponse().setComplete();
-            }
+            // Authentication disabled — all endpoints are public
+            return chain.filter(exchange);
         };
     }
 

@@ -30,8 +30,9 @@ public class BookingController {
     @PostMapping("/lock")
     public ResponseEntity<ApiResponse<LockSeatsResponse>> lockSeats(
             @Valid @RequestBody LockSeatsRequest request,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         LockSeatsResponse response = bookingService.lockSeatsAndCreateBooking(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Seats locked successfully"));
@@ -44,8 +45,9 @@ public class BookingController {
     @PostMapping("/confirm")
     public ResponseEntity<ApiResponse<BookingResponse>> confirmBooking(
             @Valid @RequestBody ConfirmBookingRequest request,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         BookingResponse response = bookingService.confirmBooking(
                 request.getBookingId(), request.getLockToken(), userId
         );
@@ -59,8 +61,9 @@ public class BookingController {
     @PostMapping("/{bookingId}/cancel")
     public ResponseEntity<ApiResponse<BookingResponse>> cancelBooking(
             @PathVariable UUID bookingId,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         BookingResponse response = bookingService.cancelBooking(bookingId, userId);
         return ResponseEntity.ok(ApiResponse.success(response, "Booking cancelled successfully"));
     }
@@ -72,8 +75,9 @@ public class BookingController {
     @GetMapping("/{bookingId}")
     public ResponseEntity<ApiResponse<BookingResponse>> getBooking(
             @PathVariable UUID bookingId,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         BookingResponse response = bookingService.getBooking(bookingId, userId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -85,8 +89,9 @@ public class BookingController {
     @GetMapping("/number/{bookingNumber}")
     public ResponseEntity<ApiResponse<BookingResponse>> getBookingByNumber(
             @PathVariable String bookingNumber,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         BookingResponse response = bookingService.getBookingByNumber(bookingNumber, userId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -97,19 +102,21 @@ public class BookingController {
      */
     @GetMapping("/my")
     public ResponseEntity<ApiResponse<PageResponse<BookingResponse>>> getMyBookings(
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         Page<BookingResponse> bookings = bookingService.getUserBookings(userId, page, size);
-        PageResponse<BookingResponse> pageResponse = new PageResponse<>(
-                bookings.getContent(),
-                bookings.getNumber(),
-                bookings.getSize(),
-                bookings.getTotalElements(),
-                bookings.getTotalPages(),
-                bookings.isLast()
-        );
+        PageResponse<BookingResponse> pageResponse = PageResponse.<BookingResponse>builder()
+                .content(bookings.getContent())
+                .page(bookings.getNumber())
+                .size(bookings.getSize())
+                .totalElements(bookings.getTotalElements())
+                .totalPages(bookings.getTotalPages())
+                .first(bookings.isFirst())
+                .last(bookings.isLast())
+                .build();
         return ResponseEntity.ok(ApiResponse.success(pageResponse));
     }
 }

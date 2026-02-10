@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { paymentApi, bookingApi } from "@/lib/api";
-import { useBookingStore, useAuthStore } from "@/store";
+import { useBookingStore } from "@/store";
 import { generateIdempotencyKey, formatCurrency } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { CreditCard, Clock, Shield, CheckCircle } from "lucide-react";
@@ -12,25 +12,39 @@ type PaymentMethod = "RAZORPAY" | "STRIPE" | "UPI" | "CARD";
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
   const { lockToken, bookingId, expiresAt, clearSeats } = useBookingStore();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("RAZORPAY");
   const [processing, setProcessing] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [success, setSuccess] = useState(false);
   const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState<any>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
     if (!lockToken || !bookingId) {
       toast.error("No active booking found");
       router.push("/");
       return;
     }
-  }, [isAuthenticated, lockToken, bookingId]);
+
+    // Fetch booking details to get amount
+    async function fetchBooking() {
+      if (!bookingId) return;
+
+      try {
+        const res = await bookingApi.getBooking(bookingId);
+        setBooking(res.data?.data);
+      } catch (error) {
+        toast.error("Failed to load booking details");
+        router.push("/");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchBooking();
+  }, [lockToken, bookingId]);
 
   // Countdown timer
   useEffect(() => {
@@ -39,7 +53,7 @@ export default function PaymentPage() {
     const updateTimer = () => {
       const remaining = Math.max(
         0,
-        Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)
+        Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000),
       );
       setTimeLeft(remaining);
       if (remaining === 0) {
@@ -62,6 +76,13 @@ export default function PaymentPage() {
 
   async function handlePayment() {
     if (processing) return;
+
+    if (!bookingId || !booking) {
+      toast.error("No active booking found");
+      router.push("/");
+      return;
+    }
+
     setProcessing(true);
 
     try {
@@ -70,6 +91,7 @@ export default function PaymentPage() {
       // Step 1: Initiate payment
       const paymentRes = await paymentApi.initiatePayment({
         bookingId,
+        amount: booking.finalAmount,
         paymentMethod,
         idempotencyKey,
       });
@@ -88,9 +110,9 @@ export default function PaymentPage() {
       });
 
       // Step 4: Confirm booking
-      await bookingApi.confirmBooking(bookingId, {
-        lockToken,
-        paymentId: payment.id,
+      await bookingApi.confirmBooking({
+        bookingId,
+        lockToken: lockToken || "",
       });
 
       setSuccess(true);
@@ -148,12 +170,26 @@ export default function PaymentPage() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return null;
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       {/* Timer Bar */}
       <div
         className={`mb-6 flex items-center justify-between rounded-lg p-4 ${
-          timeLeft <= 60 ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"
+          timeLeft <= 60
+            ? "bg-red-50 text-red-700"
+            : "bg-amber-50 text-amber-700"
         }`}
       >
         <div className="flex items-center gap-2">
@@ -172,10 +208,26 @@ export default function PaymentPage() {
         <h2 className="mb-4 text-lg font-semibold">Select Payment Method</h2>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { value: "RAZORPAY" as const, label: "Razorpay", desc: "UPI, Cards, Wallets" },
-            { value: "STRIPE" as const, label: "Stripe", desc: "International Cards" },
-            { value: "UPI" as const, label: "UPI", desc: "Google Pay, PhonePe" },
-            { value: "CARD" as const, label: "Card", desc: "Debit / Credit Card" },
+            {
+              value: "RAZORPAY" as const,
+              label: "Razorpay",
+              desc: "UPI, Cards, Wallets",
+            },
+            {
+              value: "STRIPE" as const,
+              label: "Stripe",
+              desc: "International Cards",
+            },
+            {
+              value: "UPI" as const,
+              label: "UPI",
+              desc: "Google Pay, PhonePe",
+            },
+            {
+              value: "CARD" as const,
+              label: "Card",
+              desc: "Debit / Credit Card",
+            },
           ].map((method) => (
             <button
               key={method.value}

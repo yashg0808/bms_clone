@@ -23,8 +23,9 @@ public class PaymentController {
     @PostMapping("/initiate")
     public ResponseEntity<Map<String, Object>> initiatePayment(
             @Valid @RequestBody InitiatePaymentRequest request,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         PaymentResponse response = paymentService.initiatePayment(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("success", true, "data", response, "message", "Payment initiated"));
@@ -33,8 +34,9 @@ public class PaymentController {
     @PostMapping("/verify")
     public ResponseEntity<Map<String, Object>> verifyPayment(
             @Valid @RequestBody VerifyPaymentRequest request,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         PaymentResponse response = paymentService.verifyPayment(request, userId);
         return ResponseEntity.ok(Map.of("success", true, "data", response, "message", "Payment verified"));
     }
@@ -42,8 +44,9 @@ public class PaymentController {
     @PostMapping("/{paymentId}/refund")
     public ResponseEntity<Map<String, Object>> initiateRefund(
             @PathVariable UUID paymentId,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         PaymentResponse response = paymentService.initiateRefund(paymentId, userId);
         return ResponseEntity.ok(Map.of("success", true, "data", response, "message", "Refund initiated"));
     }
@@ -51,8 +54,9 @@ public class PaymentController {
     @GetMapping("/{paymentId}")
     public ResponseEntity<Map<String, Object>> getPayment(
             @PathVariable UUID paymentId,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         PaymentResponse response = paymentService.getPayment(paymentId, userId);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
@@ -60,8 +64,9 @@ public class PaymentController {
     @GetMapping("/booking/{bookingId}")
     public ResponseEntity<Map<String, Object>> getPaymentByBooking(
             @PathVariable UUID bookingId,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
+        if (userId == null) userId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         PaymentResponse response = paymentService.getPaymentByBooking(bookingId, userId);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }

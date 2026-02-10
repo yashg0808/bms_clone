@@ -1,7 +1,6 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios from "axios";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -10,53 +9,6 @@ const apiClient = axios.create({
     "Content-Type": "application/json",
   },
 });
-
-// Request interceptor - add auth token
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("bms_token");
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Response interceptor - handle errors
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("bms_token");
-        localStorage.removeItem("bms_user");
-        window.location.href = "/login";
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
-// ---- Auth API ----
-export const authApi = {
-  register: (data: {
-    fullName: string;
-    email: string;
-    phone: string;
-    password: string;
-  }) => apiClient.post("/api/v1/auth/register", data),
-
-  login: (data: { email: string; password: string }) =>
-    apiClient.post("/api/v1/auth/login", data),
-
-  getProfile: () => apiClient.get("/api/v1/users/me"),
-
-  updateProfile: (data: { fullName?: string; phone?: string }) =>
-    apiClient.put("/api/v1/users/me", data),
-};
 
 // ---- Movie API ----
 export const movieApi = {

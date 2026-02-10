@@ -115,8 +115,8 @@ public class BookingService {
         for (ShowSeat showSeat : lockedSeats) {
             BookingSeat bookingSeat = BookingSeat.builder()
                     .showSeatId(showSeat.getId())
-                    .seatNumber(String.valueOf(showSeat.getSeatId())) // Placeholder
-                    .seatRow("") // Would come from seat details via inter-service call
+                    .seatNumber(showSeat.getSeatId().toString().substring(0, 8)) // Short placeholder until seat details fetched
+                    .seatRow("-") // Would come from seat details via inter-service call
                     .seatType("REGULAR") // Would come from seat details
                     .price(showSeat.getPrice())
                     .build();

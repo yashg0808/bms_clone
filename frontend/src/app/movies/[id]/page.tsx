@@ -17,7 +17,7 @@ export default function MovieDetailPage() {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function MovieDetailPage() {
       const res = await movieApi.getMovieShows(
         movieId,
         selectedCity.id,
-        selectedDate
+        selectedDate,
       );
       setShows(res.data?.data || []);
     } catch (error) {
@@ -122,9 +122,7 @@ export default function MovieDetailPage() {
                   {movie.averageRating.toFixed(1)}/10
                 </div>
               )}
-              <span className="text-gray-300">
-                {movie.totalReviews} Votes
-              </span>
+              <span className="text-gray-300">{movie.totalReviews} Votes</span>
             </div>
 
             <div className="flex flex-wrap gap-4 text-sm text-gray-300">
@@ -192,25 +190,25 @@ export default function MovieDetailPage() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold">{show.screen?.name}</h3>
+                    <h3 className="font-semibold">{show.theaterName}</h3>
                     <p className="text-sm text-gray-500">
-                      {show.availableSeats} seats available
+                      {show.screenName} ({show.screenType})
+                      {show.availableSeats != null &&
+                        ` · ${show.availableSeats} seats available`}
                     </p>
                   </div>
                   <button
                     onClick={() => router.push(`/shows/${show.id}/seats`)}
                     className="rounded-lg border-2 border-green-500 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50"
                   >
-                    {formatTime(show.showTime)}
+                    {formatTime(show.startTime)}
                   </button>
                 </div>
                 <div className="mt-2 flex gap-4 text-xs text-gray-500">
-                  <span>Regular: {formatCurrency(show.regularPrice)}</span>
+                  <span>Regular: {formatCurrency(show.basePrice)}</span>
                   <span>Premium: {formatCurrency(show.premiumPrice)}</span>
                   {show.reclinerPrice > 0 && (
-                    <span>
-                      Recliner: {formatCurrency(show.reclinerPrice)}
-                    </span>
+                    <span>Recliner: {formatCurrency(show.reclinerPrice)}</span>
                   )}
                 </div>
               </div>

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { bookingApi } from "@/lib/api";
 import { Booking } from "@/types";
-import { useAuthStore } from "@/store";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
 import { Ticket, Calendar, MapPin, ChevronRight } from "lucide-react";
 
@@ -18,23 +17,18 @@ const statusColors: Record<string, string> = {
 
 export default function BookingsPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
     fetchBookings();
-  }, [isAuthenticated, page]);
+  }, [page]);
 
   async function fetchBookings() {
     try {
-      const res = await bookingApi.getMyBookings(page, 10);
+      const res = await bookingApi.getMyBookings({ page, size: 10 });
       const data = res.data?.data;
       setBookings(data?.content || []);
       setTotalPages(data?.totalPages || 0);
@@ -85,7 +79,7 @@ export default function BookingsPage() {
                 <div className="flex-1">
                   <div className="mb-2 flex items-center gap-3">
                     <h3 className="text-lg font-semibold">
-                      {booking.movieTitle || "Movie"}
+                      {booking.show?.movieTitle || "Movie"}
                     </h3>
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -97,23 +91,22 @@ export default function BookingsPage() {
                   </div>
 
                   <div className="mb-3 space-y-1 text-sm text-gray-500">
-                    {booking.theaterName && (
+                    {booking.show?.theaterName && (
                       <div className="flex items-center gap-1.5">
                         <MapPin className="h-3.5 w-3.5" />
                         <span>
-                          {booking.theaterName}
-                          {booking.screenName
-                            ? ` - ${booking.screenName}`
-                            : ""}
+                          {booking.show.theaterName} - {booking.show.screenName}
                         </span>
                       </div>
                     )}
-                    {booking.showTime && (
+                    {booking.show?.showDate && (
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5" />
                         <span>
-                          {formatDate(booking.showTime)} at{" "}
-                          {formatTime(booking.showTime)}
+                          {formatDate(booking.show.showDate)}
+                          {booking.show.startTime
+                            ? ` at ${formatTime(booking.show.startTime)}`
+                            : ""}
                         </span>
                       </div>
                     )}
@@ -121,10 +114,8 @@ export default function BookingsPage() {
 
                   <div className="flex items-center gap-4 text-sm">
                     <span className="text-gray-500">
-                      {booking.seatCount || booking.seats?.length || 0} ticket
-                      {(booking.seatCount || booking.seats?.length || 0) !== 1
-                        ? "s"
-                        : ""}
+                      {booking.seats?.length || 0} ticket
+                      {(booking.seats?.length || 0) !== 1 ? "s" : ""}
                     </span>
                     <span className="font-bold text-gray-900">
                       {formatCurrency(booking.totalAmount)}

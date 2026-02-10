@@ -8,7 +8,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        border: "hsl(var(--border))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
         primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
           50: "#fef2f3",
           100: "#fde6e7",
           200: "#fbd0d4",
@@ -20,6 +25,10 @@ module.exports = {
           800: "#911d29",
           900: "#7c1d28",
           950: "#440a11",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
         },
         dark: {
           50: "#f6f6f7",
@@ -34,6 +43,9 @@ module.exports = {
           900: "#1a1a1f",
           950: "#0f0f12",
         },
+      },
+      borderColor: {
+        DEFAULT: "hsl(var(--border))",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],

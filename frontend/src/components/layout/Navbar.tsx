@@ -2,22 +2,24 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAuthStore } from "@/store";
 import { useCityStore } from "@/store";
 import { locationApi } from "@/lib/api";
 import { City } from "@/types";
-import { Search, MapPin, User, ChevronDown, Menu, X } from "lucide-react";
+import { Search, MapPin, ChevronDown, Menu, X, Ticket } from "lucide-react";
 
 export default function Navbar() {
-  const { isAuthenticated, user, logout, loadFromStorage } = useAuthStore();
-  const { selectedCity, setSelectedCity, setCities, cities, loadFromStorage: loadCity } = useCityStore();
+  const {
+    selectedCity,
+    setSelectedCity,
+    setCities,
+    cities,
+    loadFromStorage: loadCity,
+  } = useCityStore();
   const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    loadFromStorage();
     loadCity();
     fetchCities();
   }, []);
@@ -96,56 +98,14 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Auth */}
-            {isAuthenticated ? (
-              <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-                >
-                  <User className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {user?.fullName?.split(" ")[0]}
-                  </span>
-                </button>
-
-                {showUserMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-lg border bg-white py-2 shadow-lg">
-                    <Link
-                      href="/profile"
-                      className="block px-4 py-2 text-sm hover:bg-gray-50"
-                      onClick={() => setShowUserMenu(false)}
-                    >
-                      My Profile
-                    </Link>
-                    <Link
-                      href="/bookings"
-                      className="block px-4 py-2 text-sm hover:bg-gray-50"
-                      onClick={() => setShowUserMenu(false)}
-                    >
-                      My Bookings
-                    </Link>
-                    <hr className="my-1" />
-                    <button
-                      onClick={() => {
-                        logout();
-                        setShowUserMenu(false);
-                      }}
-                      className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link
-                href="/login"
-                className="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600"
-              >
-                Sign In
-              </Link>
-            )}
+            {/* Bookings */}
+            <Link
+              href="/bookings"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              <Ticket className="h-4 w-4" />
+              <span className="hidden sm:inline">Bookings</span>
+            </Link>
 
             {/* Mobile menu toggle */}
             <button
