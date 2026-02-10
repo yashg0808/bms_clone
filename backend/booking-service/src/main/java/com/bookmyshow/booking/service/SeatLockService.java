@@ -13,11 +13,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,6 +39,7 @@ public class SeatLockService {
     private final RedissonClient redissonClient;
     private final RedisTemplate<String, String> redisTemplate;
     private final ShowSeatRepository showSeatRepository;
+    private final SeatCacheService seatCacheService;
 
     private static final String LOCK_KEY_PREFIX = "show:lock:";
     private static final String SEAT_LOCK_TOKEN_PREFIX = "seat:lock:token:";
@@ -115,6 +115,15 @@ public class SeatLockService {
                 String tokenValue = showId + "|" + seatIdsStr;
                 redisTemplate.opsForValue().set(tokenKey, tokenValue, Duration.ofMinutes(seatLockTimeoutMinutes));
 
+                // Write-through: update seat cache so reads never see stale AVAILABLE status
+                Map<UUID, String> statusUpdates = new HashMap<>();
+                Map<UUID, BigDecimal> priceMap = new HashMap<>();
+                for (ShowSeat seat : requestedSeats) {
+                    statusUpdates.put(seat.getId(), SeatStatus.LOCKED.name());
+                    priceMap.put(seat.getId(), seat.getPrice());
+                }
+                seatCacheService.updateSeatStatuses(showId, statusUpdates, priceMap);
+
                 log.info("Seats locked successfully - showId: {}, seatCount: {}, lockToken: {}",
                         showId, seatIds.size(), lockToken);
 
@@ -158,17 +167,24 @@ public class SeatLockService {
 
         // Release seats in database
         List<ShowSeat> seats = showSeatRepository.findByShowIdAndIdIn(showId, seatIds);
+        Map<UUID, String> statusUpdates = new HashMap<>();
+        Map<UUID, BigDecimal> priceMap = new HashMap<>();
         for (ShowSeat seat : seats) {
             if (seat.getStatus() == SeatStatus.LOCKED) {
                 seat.setStatus(SeatStatus.AVAILABLE);
                 seat.setLockedBy(null);
                 seat.setLockedAt(null);
+                statusUpdates.put(seat.getId(), SeatStatus.AVAILABLE.name());
+                priceMap.put(seat.getId(), seat.getPrice());
             }
         }
         showSeatRepository.saveAll(seats);
 
         // Remove lock token from Redis
         redisTemplate.delete(tokenKey);
+
+        // Write-through: update cache to reflect released seats
+        seatCacheService.updateSeatStatuses(showId, statusUpdates, priceMap);
 
         log.info("Seats released - showId: {}, seatCount: {}", showId, seatIds.size());
     }

@@ -78,7 +78,7 @@ export default function SeatMap({ seats, onProceed }: SeatMapProps) {
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([row, rowSeats]) => {
                   const sorted = rowSeats.sort(
-                    (a, b) => a.columnNumber - b.columnNumber
+                    (a, b) => a.columnNumber - b.columnNumber,
                   );
                   const maxCol = Math.max(...sorted.map((s) => s.columnNumber));
                   // Insert aisle gaps after ~1/3 and ~2/3 of the row
@@ -116,7 +116,7 @@ export default function SeatMap({ seats, onProceed }: SeatMapProps) {
                                   ? "h-9 w-9"
                                   : "h-7 w-7",
                                 seatTypeStyles[section.type] || "rounded",
-                                getSeatColor(seat)
+                                getSeatColor(seat),
                               )}
                               title={`${seat.seatNumber} · ${section.label} · ${formatCurrency(seat.price)}`}
                             >

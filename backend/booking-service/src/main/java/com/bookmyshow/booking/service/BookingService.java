@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,6 +45,7 @@ import java.util.stream.Collectors;
 public class BookingService {
 
     private final SeatLockService seatLockService;
+    private final SeatCacheService seatCacheService;
     private final ShowSeatRepository showSeatRepository;
     private final BookingRepository bookingRepository;
     private final BookingSeatRepository bookingSeatRepository;
@@ -187,6 +189,8 @@ public class BookingService {
 
         // Mark seats as BOOKED
         List<ShowSeat> seats = showSeatRepository.findByShowIdAndIdIn(booking.getShowId(), lockedSeatIds);
+        Map<UUID, String> statusUpdates = new HashMap<>();
+        Map<UUID, BigDecimal> priceMap = new HashMap<>();
         for (ShowSeat seat : seats) {
             if (seat.getStatus() != SeatStatus.LOCKED) {
                 throw new SeatUnavailableException("Seat status changed unexpectedly. Please try again.");
@@ -194,8 +198,13 @@ public class BookingService {
             seat.setStatus(SeatStatus.BOOKED);
             seat.setLockedBy(null);
             seat.setLockedAt(null);
+            statusUpdates.put(seat.getId(), SeatStatus.BOOKED.name());
+            priceMap.put(seat.getId(), seat.getPrice());
         }
         showSeatRepository.saveAll(seats);
+
+        // Write-through: update cache to reflect BOOKED status
+        seatCacheService.updateSeatStatuses(booking.getShowId(), statusUpdates, priceMap);
 
         // Save guest details and update booking status
         booking.setGuestName(guestName);
@@ -241,12 +250,19 @@ public class BookingService {
                     .collect(Collectors.toList());
 
             List<ShowSeat> showSeats = showSeatRepository.findByShowIdAndIdIn(booking.getShowId(), seatIds);
+            Map<UUID, String> statusUpdates = new HashMap<>();
+            Map<UUID, BigDecimal> priceMap = new HashMap<>();
             for (ShowSeat seat : showSeats) {
                 seat.setStatus(SeatStatus.AVAILABLE);
                 seat.setLockedBy(null);
                 seat.setLockedAt(null);
+                statusUpdates.put(seat.getId(), SeatStatus.AVAILABLE.name());
+                priceMap.put(seat.getId(), seat.getPrice());
             }
             showSeatRepository.saveAll(showSeats);
+
+            // Write-through: update cache to reflect AVAILABLE status
+            seatCacheService.updateSeatStatuses(booking.getShowId(), statusUpdates, priceMap);
         }
 
         booking.setStatus(BookingStatus.CANCELLED);
@@ -285,11 +301,42 @@ public class BookingService {
 
     /**
      * Get seat availability for a show with full layout info.
+     * Uses read-through cache: Redis Hash → on MISS → Postgres → populate cache.
      */
     @Transactional(readOnly = true)
     public List<ShowSeatDTO> getShowSeats(UUID showId) {
+        // 1. Always fetch layout + status from DB (layout data is not in cache)
         List<Object[]> rows = showSeatRepository.findShowSeatsWithSeatInfo(showId);
-        return rows.stream().map(this::mapRowToShowSeatDTO).collect(Collectors.toList());
+        List<ShowSeatDTO> dbSeats = rows.stream().map(this::mapRowToShowSeatDTO).collect(Collectors.toList());
+
+        if (dbSeats.isEmpty()) {
+            return dbSeats;
+        }
+
+        // 2. Try to overlay status from Redis cache (much faster for repeat reads)
+        Map<String, String> cached = seatCacheService.getShowSeatStatuses(showId);
+
+        if (!cached.isEmpty()) {
+            // Cache HIT — overlay the cached status onto the DB layout
+            for (ShowSeatDTO seat : dbSeats) {
+                String cachedValue = cached.get(seat.getId().toString());
+                if (cachedValue != null) {
+                    String[] parts = cachedValue.split(":", 2);
+                    seat.setStatus(parts[0]);
+                    // price from cache for consistency
+                    if (parts.length > 1) {
+                        try {
+                            seat.setPrice(new java.math.BigDecimal(parts[1]));
+                        } catch (NumberFormatException ignored) { }
+                    }
+                }
+            }
+        } else {
+            // Cache MISS — populate cache from the DB result set
+            seatCacheService.populateCache(showId, dbSeats);
+        }
+
+        return dbSeats;
     }
 
     /**

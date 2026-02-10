@@ -55,6 +55,8 @@ booking:
     distributed-lock-wait-seconds: 5
     distributed-lock-lease-seconds: 10
   convenience-fee-percent: 4.5
+  cache:
+    seat-ttl-minutes: 30
 
 management:
   endpoints:
