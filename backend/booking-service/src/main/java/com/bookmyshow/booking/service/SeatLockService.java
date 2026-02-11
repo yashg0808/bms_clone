@@ -3,6 +3,7 @@ package com.bookmyshow.booking.service;
 import com.bookmyshow.booking.exception.SeatUnavailableException;
 import com.bookmyshow.booking.model.SeatStatus;
 import com.bookmyshow.booking.model.ShowSeat;
+import com.bookmyshow.booking.repository.SeatStatusProjection;
 import com.bookmyshow.booking.repository.ShowSeatRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +65,7 @@ public class SeatLockService {
     public String lockSeats(UUID showId, List<UUID> seatIds) {
         
         // ═══════════════════════════════════════════════════════════════════════
-        // OPTIMIZATION: Fail-fast check against Redis cache
+        // Fail-fast check against Redis cache
         // Avoids waiting for distributed lock if seats are obviously unavailable
         // This is an optimization only - DB check is still the source of truth
         // ═══════════════════════════════════════════════════════════════════════
@@ -103,15 +104,18 @@ public class SeatLockService {
             }
 
             try {
-                // Fetch requested seats and verify they are all available (DB is source of truth)
-                List<ShowSeat> requestedSeats = showSeatRepository.findByShowIdAndIdIn(showId, seatIds);
+                // ═══════════════════════════════════════════════════════════════
+                // STEP 1: Efficient projection query - fetch only id and status
+                // This avoids loading full entities until we confirm availability
+                // ═══════════════════════════════════════════════════════════════
+                List<SeatStatusProjection> seatStatuses = showSeatRepository.findSeatStatusesByShowIdAndIdIn(showId, seatIds);
 
-                if (requestedSeats.size() != seatIds.size()) {
+                if (seatStatuses.size() != seatIds.size()) {
                     throw new SeatUnavailableException("One or more selected seats do not exist for this show.");
                 }
 
                 List<UUID> unavailableSeats = new ArrayList<>();
-                for (ShowSeat seat : requestedSeats) {
+                for (SeatStatusProjection seat : seatStatuses) {
                     if (seat.getStatus() != SeatStatus.AVAILABLE) {
                         unavailableSeats.add(seat.getId());
                     }
@@ -123,6 +127,11 @@ public class SeatLockService {
                             unavailableSeats
                     );
                 }
+
+                // ═══════════════════════════════════════════════════════════════
+                // STEP 2: Now fetch full entities only for confirmed available seats
+                // ═══════════════════════════════════════════════════════════════
+                List<ShowSeat> requestedSeats = showSeatRepository.findAllById(seatIds);
 
                 // Generate a unique lock token
                 String lockToken = UUID.randomUUID().toString();

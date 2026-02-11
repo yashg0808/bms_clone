@@ -29,6 +29,16 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
             @Param("status") SeatStatus status
     );
 
+    /**
+     * Efficient projection query - fetches only id and status for availability checks.
+     * Avoids loading full ShowSeat entity until we confirm seats are available.
+     */
+    @Query("SELECT ss.id as id, ss.status as status FROM ShowSeat ss WHERE ss.showId = :showId AND ss.id IN :seatIds")
+    List<SeatStatusProjection> findSeatStatusesByShowIdAndIdIn(
+            @Param("showId") UUID showId,
+            @Param("seatIds") List<UUID> seatIds
+    );
+
     @Query("SELECT ss FROM ShowSeat ss WHERE ss.status = 'LOCKED' AND ss.lockedAt < :expiry")
     List<ShowSeat> findExpiredLocks(@Param("expiry") LocalDateTime expiry);
 
