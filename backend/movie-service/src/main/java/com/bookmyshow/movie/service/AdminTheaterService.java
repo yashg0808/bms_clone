@@ -266,12 +266,15 @@ public class AdminTheaterService {
     }
 
     private TheaterResponse mapTheaterToResponse(Theater theater) {
+        // Count actual active screens instead of using stored totalScreens
+        long actualScreenCount = screenRepository.countByTheaterIdAndIsActiveTrue(theater.getId());
+        
         return TheaterResponse.builder()
                 .id(theater.getId())
                 .name(theater.getName())
                 .address(theater.getAddress())
                 .cityName(theater.getCity().getName())
-                .totalScreens(theater.getTotalScreens())
+                .totalScreens((int) actualScreenCount)
                 .build();
     }
 

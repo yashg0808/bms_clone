@@ -4,6 +4,7 @@ import com.bookmyshow.movie.config.CacheEventLogger;
 import com.bookmyshow.movie.dto.CityResponse;
 import com.bookmyshow.movie.dto.TheaterResponse;
 import com.bookmyshow.movie.repository.CityRepository;
+import com.bookmyshow.movie.repository.ScreenRepository;
 import com.bookmyshow.movie.repository.TheaterRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ public class TheaterService {
 
     private final TheaterRepository theaterRepository;
     private final CityRepository cityRepository;
+    private final ScreenRepository screenRepository;
 
     /**
      * Get all active cities.
@@ -60,7 +62,7 @@ public class TheaterService {
                         .name(t.getName())
                         .address(t.getAddress())
                         .cityName(t.getCity().getName())
-                        .totalScreens(t.getTotalScreens())
+                        .totalScreens((int) screenRepository.countByTheaterIdAndIsActiveTrue(t.getId()))
                         .build())
                 .collect(Collectors.toList());
     }
