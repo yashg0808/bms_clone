@@ -4,12 +4,8 @@ import com.bookmyshow.movie.dto.ShowResponse;
 import com.bookmyshow.movie.dto.PagedResponse;
 import com.bookmyshow.movie.dto.admin.CreateShowRequest;
 import com.bookmyshow.movie.dto.admin.UpdateShowRequest;
-import com.bookmyshow.movie.model.Movie;
-import com.bookmyshow.movie.model.Screen;
-import com.bookmyshow.movie.model.Show;
-import com.bookmyshow.movie.repository.MovieRepository;
-import com.bookmyshow.movie.repository.ScreenRepository;
-import com.bookmyshow.movie.repository.ShowRepository;
+import com.bookmyshow.movie.model.*;
+import com.bookmyshow.movie.repository.*;
 import com.bookmyshow.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -23,7 +19,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -40,6 +38,8 @@ public class AdminShowService {
     private final ShowRepository showRepository;
     private final MovieRepository movieRepository;
     private final ScreenRepository screenRepository;
+    private final SeatRepository seatRepository;
+    private final ShowSeatRepository showSeatRepository;
 
     /**
      * Get all shows with filtering options.
@@ -117,7 +117,47 @@ public class AdminShowService {
         Show saved = showRepository.save(show);
         log.info("Created show with ID: {}", saved.getId());
         
+        // Generate show_seats from the screen's seat template
+        int seatsCreated = generateShowSeats(saved, request.getBasePrice(), 
+                request.getPremiumPrice(), request.getReclinerPrice());
+        log.info("Generated {} show_seats for show {}", seatsCreated, saved.getId());
+        
         return mapToResponse(saved);
+    }
+    
+    /**
+     * Generate show_seats from screen's seat template.
+     */
+    private int generateShowSeats(Show show, BigDecimal basePrice, BigDecimal premiumPrice, BigDecimal reclinerPrice) {
+        List<Seat> seats = seatRepository.findByScreenIdAndIsActiveTrueOrderByRowNameAscColumnNumberAsc(
+                show.getScreen().getId());
+        
+        if (seats.isEmpty()) {
+            log.warn("No seats found for screen {}, show {} will have no bookable seats", 
+                    show.getScreen().getId(), show.getId());
+            return 0;
+        }
+        
+        List<ShowSeat> showSeats = new ArrayList<>(seats.size());
+        for (Seat seat : seats) {
+            BigDecimal price = switch (seat.getSeatType()) {
+                case RECLINER -> reclinerPrice != null ? reclinerPrice : basePrice.multiply(BigDecimal.valueOf(2.5));
+                case PREMIUM -> premiumPrice != null ? premiumPrice : basePrice.multiply(BigDecimal.valueOf(1.5));
+                case VIP -> reclinerPrice != null ? reclinerPrice : basePrice.multiply(BigDecimal.valueOf(3.0));
+                default -> basePrice;
+            };
+            
+            ShowSeat showSeat = ShowSeat.builder()
+                    .showId(show.getId())
+                    .seatId(seat.getId())
+                    .status("AVAILABLE")
+                    .price(price)
+                    .build();
+            showSeats.add(showSeat);
+        }
+        
+        showSeatRepository.saveAll(showSeats);
+        return showSeats.size();
     }
 
     /**
