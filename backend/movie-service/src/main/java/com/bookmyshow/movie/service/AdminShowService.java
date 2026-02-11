@@ -202,6 +202,7 @@ public class AdminShowService {
 
     /**
      * Delete a show (soft delete).
+     * Also deletes all associated show_seats.
      */
     @Transactional
     @Caching(evict = {
@@ -209,10 +210,14 @@ public class AdminShowService {
         @CacheEvict(value = "shows-by-movie", allEntries = true)
     })
     public void deleteShow(UUID showId) {
-        log.info("Deleting (deactivating) show: {}", showId);
+        log.info("Deleting show: {}", showId);
         
         Show show = showRepository.findById(showId)
                 .orElseThrow(() -> new ResourceNotFoundException("Show", "id", showId));
+        
+        // Delete all show_seats for this show
+        showSeatRepository.deleteByShowId(showId);
+        log.info("Deleted show_seats for show: {}", showId);
         
         show.setIsActive(false);
         showRepository.save(show);

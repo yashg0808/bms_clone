@@ -6,9 +6,12 @@ import com.bookmyshow.movie.dto.admin.CreateScreenRequest;
 import com.bookmyshow.movie.dto.admin.CreateTheaterRequest;
 import com.bookmyshow.movie.model.City;
 import com.bookmyshow.movie.model.Screen;
+import com.bookmyshow.movie.model.Seat;
+import com.bookmyshow.movie.model.SeatType;
 import com.bookmyshow.movie.model.Theater;
 import com.bookmyshow.movie.repository.CityRepository;
 import com.bookmyshow.movie.repository.ScreenRepository;
+import com.bookmyshow.movie.repository.SeatRepository;
 import com.bookmyshow.movie.repository.TheaterRepository;
 import com.bookmyshow.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -35,6 +39,7 @@ public class AdminTheaterService {
     private final TheaterRepository theaterRepository;
     private final ScreenRepository screenRepository;
     private final CityRepository cityRepository;
+    private final SeatRepository seatRepository;
 
     /**
      * Get all theaters.
@@ -163,6 +168,10 @@ public class AdminTheaterService {
         
         Screen saved = screenRepository.save(screen);
         
+        // Generate seat templates for this screen
+        int seatsGenerated = generateSeatsForScreen(saved, request.getTotalSeats());
+        log.info("Generated {} seat templates for screen {}", seatsGenerated, saved.getId());
+        
         // Update theater's total screens count
         theater.setTotalScreens(theater.getTotalScreens() + 1);
         theaterRepository.save(theater);
@@ -170,6 +179,53 @@ public class AdminTheaterService {
         log.info("Created screen with ID: {}", saved.getId());
         
         return mapScreenToResponse(saved);
+    }
+    
+    /**
+     * Generate seat templates for a new screen.
+     * Creates a standard layout with rows A-J (or more) and seats 1-N per row.
+     * First 2 rows are REGULAR, next 5 rows are PREMIUM, last rows are RECLINER.
+     */
+    private int generateSeatsForScreen(Screen screen, int totalSeats) {
+        if (totalSeats <= 0) {
+            totalSeats = 100; // Default
+        }
+        
+        int seatsPerRow = 10;
+        int totalRows = (int) Math.ceil((double) totalSeats / seatsPerRow);
+        
+        List<Seat> seats = new ArrayList<>();
+        int seatCount = 0;
+        
+        for (int row = 0; row < totalRows && seatCount < totalSeats; row++) {
+            char rowName = (char) ('A' + row);
+            SeatType seatType;
+            
+            // Determine seat type based on row position
+            if (row < 2) {
+                seatType = SeatType.REGULAR;
+            } else if (row < 7) {
+                seatType = SeatType.PREMIUM;
+            } else {
+                seatType = SeatType.RECLINER;
+            }
+            
+            for (int col = 1; col <= seatsPerRow && seatCount < totalSeats; col++) {
+                Seat seat = Seat.builder()
+                        .screen(screen)
+                        .rowName(String.valueOf(rowName))
+                        .columnNumber(col)
+                        .seatNumber(rowName + String.valueOf(col))
+                        .seatType(seatType)
+                        .isActive(true)
+                        .build();
+                seats.add(seat);
+                seatCount++;
+            }
+        }
+        
+        seatRepository.saveAll(seats);
+        return seats.size();
     }
 
     /**
