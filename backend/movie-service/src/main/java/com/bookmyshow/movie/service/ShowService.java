@@ -1,5 +1,6 @@
 package com.bookmyshow.movie.service;
 
+import com.bookmyshow.movie.config.CacheEventLogger;
 import com.bookmyshow.movie.dto.ShowResponse;
 import com.bookmyshow.movie.model.Show;
 import com.bookmyshow.movie.repository.ShowRepository;
@@ -31,6 +32,7 @@ public class ShowService {
      */
     @Cacheable(value = "shows-by-movie", key = "#movieId + ':' + #date")
     public List<ShowResponse> getShowsByMovieAndDate(UUID movieId, LocalDate date) {
+        CacheEventLogger.logCacheMiss("shows-by-movie", movieId, date);
         return showRepository.findByMovieIdAndShowDate(movieId, date)
                 .stream()
                 .map(this::mapToResponse)
@@ -42,6 +44,7 @@ public class ShowService {
      */
     @Cacheable(value = "shows-by-movie", key = "#movieId + ':' + #cityId + ':' + #date")
     public List<ShowResponse> getShowsByMovieCityAndDate(UUID movieId, UUID cityId, LocalDate date) {
+        CacheEventLogger.logCacheMiss("shows-by-movie", movieId, cityId, date);
         return showRepository.findByMovieCityAndDate(movieId, cityId, date)
                 .stream()
                 .map(this::mapToResponse)
@@ -54,6 +57,7 @@ public class ShowService {
      */
     @Cacheable(value = "shows", key = "#showId")
     public ShowResponse getShowById(UUID showId) {
+        CacheEventLogger.logCacheMiss("shows", showId);
         Show show = showRepository.findById(showId)
                 .orElseThrow(() -> new ResourceNotFoundException("Show", "id", showId));
         return mapToResponse(show);

@@ -49,6 +49,7 @@ management:
 logging:
   level:
     com.bookmyshow: DEBUG
+    CacheLogger: DEBUG
 
 layout:
   output-dir: ${LAYOUT_OUTPUT_DIR:./layouts}

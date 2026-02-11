@@ -1,5 +1,6 @@
 package com.bookmyshow.movie.service;
 
+import com.bookmyshow.movie.config.CacheEventLogger;
 import com.bookmyshow.movie.dto.MovieResponse;
 import com.bookmyshow.movie.dto.PagedResponse;
 import com.bookmyshow.movie.model.Movie;
@@ -37,6 +38,7 @@ public class MovieService {
      */
     @Cacheable(value = "movies-list", key = "'page:' + #page + ':size:' + #size")
     public PagedResponse<MovieResponse> getMovies(int page, int size) {
+        CacheEventLogger.logCacheMiss("movies-list", "page", page, "size", size);
         Pageable pageable = PageRequest.of(page, size, Sort.by("releaseDate").descending());
         Page<MovieResponse> pageResult = movieRepository.findByIsActiveTrue(pageable)
                 .map(this::mapToResponse);
@@ -48,6 +50,7 @@ public class MovieService {
      */
     @Cacheable(value = "movies", key = "#movieId")
     public MovieResponse getMovieById(UUID movieId) {
+        CacheEventLogger.logCacheMiss("movies", movieId);
         Movie movie = movieRepository.findById(movieId)
                 .orElseThrow(() -> new ResourceNotFoundException("Movie", "id", movieId));
         return mapToResponse(movie);
@@ -59,6 +62,7 @@ public class MovieService {
      */
     @Cacheable(value = "movies-by-city", key = "#cityId + ':page:' + #page + ':size:' + #size")
     public PagedResponse<MovieResponse> getMoviesByCity(UUID cityId, int page, int size) {
+        CacheEventLogger.logCacheMiss("movies-by-city", cityId, "page", page, "size", size);
         Pageable pageable = PageRequest.of(page, size);
         Page<MovieResponse> pageResult = movieRepository.findMoviesByCity(cityId, LocalDate.now(), pageable)
                 .map(this::mapToResponse);
@@ -81,6 +85,7 @@ public class MovieService {
      */
     @Cacheable(value = "featured-movies")
     public List<MovieResponse> getFeaturedMovies() {
+        CacheEventLogger.logCacheMiss("featured-movies", "all");
         return movieRepository.findFeaturedMovies(LocalDate.now(), PageRequest.of(0, 10))
                 .stream()
                 .map(this::mapToResponse)

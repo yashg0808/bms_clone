@@ -1,5 +1,6 @@
 package com.bookmyshow.movie.service;
 
+import com.bookmyshow.movie.config.CacheEventLogger;
 import com.bookmyshow.movie.dto.CityResponse;
 import com.bookmyshow.movie.dto.TheaterResponse;
 import com.bookmyshow.movie.repository.CityRepository;
@@ -33,7 +34,7 @@ public class TheaterService {
      */
     @Cacheable(value = "cities", key = "'all'")
     public List<CityResponse> getAllCities() {
-        log.debug("Fetching all cities from database (cache miss)");
+        CacheEventLogger.logCacheMiss("cities", "all");
         return cityRepository.findByIsActiveTrueOrderByNameAsc()
                 .stream()
                 .map(c -> CityResponse.builder()
@@ -51,7 +52,7 @@ public class TheaterService {
      */
     @Cacheable(value = "theaters", key = "#cityId")
     public List<TheaterResponse> getTheatersByCity(UUID cityId) {
-        log.debug("Fetching theaters for city {} from database (cache miss)", cityId);
+        CacheEventLogger.logCacheMiss("theaters", cityId);
         return theaterRepository.findByCityIdAndIsActiveTrue(cityId)
                 .stream()
                 .map(t -> TheaterResponse.builder()
