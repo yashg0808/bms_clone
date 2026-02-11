@@ -1,6 +1,7 @@
 # BookMyShow Clone - System Design & Architecture
 
 ## Table of Contents
+
 1. [Overview](#overview)
 2. [High-Level Architecture](#high-level-architecture)
 3. [Core Design Principles](#core-design-principles)
@@ -24,8 +25,9 @@
 This document provides comprehensive technical documentation for a movie ticket booking system (BookMyShow clone) designed to handle high concurrency, flash sales scenarios, and scale to millions of users.
 
 ### Key Requirements
+
 - **Functional**: Browse movies, view showtimes, select seats, book tickets, manage bookings
-- **Non-Functional**: 
+- **Non-Functional**:
   - Handle 10,000+ concurrent seat selections per show
   - Sub-second seat availability updates
   - 99.9% availability during peak hours
@@ -33,17 +35,18 @@ This document provides comprehensive technical documentation for a movie ticket 
   - Graceful degradation under load
 
 ### Tech Stack
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 14 (React), TypeScript, TailwindCSS |
-| API Gateway | Spring Cloud Gateway |
-| Backend Services | Spring Boot 3.2, Java 17 |
-| Database | PostgreSQL 15 (with sharding support) |
-| Cache | Redis 7 (Cluster mode) |
-| Message Queue | Redis Pub/Sub (upgradeable to Kafka) |
-| Container Orchestration | Kubernetes (Helm charts) |
-| Monitoring | Prometheus, Grafana |
-| Load Balancer | NGINX / K8s Ingress |
+
+| Layer                   | Technology                                  |
+| ----------------------- | ------------------------------------------- |
+| Frontend                | Next.js 14 (React), TypeScript, TailwindCSS |
+| API Gateway             | Spring Cloud Gateway                        |
+| Backend Services        | Spring Boot 3.2, Java 17                    |
+| Database                | PostgreSQL 15 (with sharding support)       |
+| Cache                   | Redis 7 (Cluster mode)                      |
+| Message Queue           | Redis Pub/Sub (upgradeable to Kafka)        |
+| Container Orchestration | Kubernetes (Helm charts)                    |
+| Monitoring              | Prometheus, Grafana                         |
+| Load Balancer           | NGINX / K8s Ingress                         |
 
 ---
 
@@ -117,21 +120,25 @@ This document provides comprehensive technical documentation for a movie ticket 
 ## Core Design Principles
 
 ### 1. Separation of Concerns
+
 - **Static data** (screen layouts, seat positions) served via CDN
 - **Dynamic data** (seat availability) served via Redis cache
 - **Persistent data** (bookings, transactions) stored in PostgreSQL
 
 ### 2. Optimistic UI with Pessimistic Locking
+
 - Frontend shows optimistic seat selection
 - Backend uses distributed locks for seat reservation
 - Conflict resolution with immediate feedback
 
 ### 3. Event-Driven Cache Invalidation
+
 - Write-through caching for seat status
 - Pub/Sub for multi-instance cache sync
 - TTL-based expiration as fallback
 
 ### 4. Graceful Degradation
+
 - Waiting room for traffic spikes
 - Circuit breakers for downstream failures
 - Fallback to database when cache unavailable
@@ -143,6 +150,7 @@ This document provides comprehensive technical documentation for a movie ticket 
 ### Service Responsibilities
 
 #### API Gateway (Port 8080)
+
 ```yaml
 Responsibilities:
   - Request routing to downstream services
@@ -159,6 +167,7 @@ Key Components:
 ```
 
 #### Movie Service (Port 8085)
+
 ```yaml
 Responsibilities:
   - Movie catalog management (CRUD)
@@ -171,7 +180,7 @@ Responsibilities:
 Key Entities:
   - Movie, Theater, Screen, City
   - Seat (template), Show, ShowSeat
-  
+
 Caching Strategy:
   - movies: 1 hour TTL
   - movies-list: 10 min TTL
@@ -181,6 +190,7 @@ Caching Strategy:
 ```
 
 #### Booking Service (Port 8083)
+
 ```yaml
 Responsibilities:
   - Seat locking with distributed locks
@@ -192,7 +202,7 @@ Responsibilities:
 Key Entities:
   - Booking, BookingSeat
   - ShowSeat (status management)
-  
+
 Critical Flows:
   - Lock → Confirm → Complete
   - Lock → Expire → Release
@@ -200,6 +210,7 @@ Critical Flows:
 ```
 
 #### Notification Service (Port 8084)
+
 ```yaml
 Responsibilities:
   - Email notifications (booking confirmation)
@@ -318,7 +329,7 @@ The system supports **city-based horizontal sharding** for geographic distributi
 ```sql
 -- Shard configuration
 shard_mumbai    → Cities: Mumbai, Pune, Nashik
-shard_delhi     → Cities: Delhi, Noida, Gurgaon  
+shard_delhi     → Cities: Delhi, Noida, Gurgaon
 shard_bangalore → Cities: Bangalore, Chennai, Hyderabad
 ```
 
@@ -413,14 +424,14 @@ CREATE TABLE bookings_2026_02 PARTITION OF bookings
 ```java
 @Configuration
 public class CacheConfig {
-    
+
     @Bean
     public RedisCacheConfiguration cacheConfiguration() {
         return RedisCacheConfiguration.defaultCacheConfig()
             .serializeValuesWith(SerializationPair.fromSerializer(
                 new GenericJackson2JsonRedisSerializer()));
     }
-    
+
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory factory) {
         Map<String, RedisCacheConfiguration> configs = Map.of(
@@ -433,7 +444,7 @@ public class CacheConfig {
             "shows",          config(Duration.ofMinutes(5)),
             "shows-by-movie", config(Duration.ofMinutes(5))
         );
-        
+
         return RedisCacheManager.builder(factory)
             .withInitialCacheConfigurations(configs)
             .build();
@@ -543,17 +554,17 @@ public class CacheConfig {
 @Transactional
 public void releaseExpiredLocks() {
     LocalDateTime now = LocalDateTime.now();
-    
+
     // Find all expired locked seats
     List<ShowSeat> expiredSeats = showSeatRepository
         .findByStatusAndLockedUntilBefore("LOCKED", now);
-    
+
     for (ShowSeat seat : expiredSeats) {
         // Release the seat
         seat.setStatus("AVAILABLE");
         seat.setLockedBy(null);
         seat.setLockedUntil(null);
-        
+
         // Update cache
         seatCacheService.updateSeatStatuses(
             seat.getShowId(),
@@ -561,7 +572,7 @@ public void releaseExpiredLocks() {
             Map.of(seat.getId(), seat.getPrice())
         );
     }
-    
+
     // Also expire pending bookings
     bookingRepository.expirePendingBookings(now);
 }
@@ -590,39 +601,39 @@ User B ─────────────────────►│ Loc
 ```java
 public BookingResponse lockSeats(LockRequest request) {
     List<UUID> seatIds = request.getSeatIds();
-    
+
     // Sort seat IDs to prevent deadlock
     Collections.sort(seatIds);
-    
+
     List<String> lockKeys = seatIds.stream()
         .map(id -> "seat_lock:" + id)
         .toList();
-    
+
     try {
         // Acquire all locks atomically using Redis SETNX
         boolean acquired = redisLockService.acquireMultipleLocks(
-            lockKeys, 
+            lockKeys,
             LOCK_TTL_SECONDS
         );
-        
+
         if (!acquired) {
             throw new SeatUnavailableException("One or more seats already locked");
         }
-        
+
         // Verify seats are still available in DB
         verifySeatsAvailable(request.getShowId(), seatIds);
-        
+
         // Create booking with PENDING status
         Booking booking = createPendingBooking(request);
-        
+
         // Update seat status in DB
         updateSeatStatus(seatIds, "LOCKED", booking.getId());
-        
+
         // Update cache (write-through)
         updateSeatCache(request.getShowId(), seatIds, "LOCKED");
-        
+
         return buildResponse(booking);
-        
+
     } catch (Exception e) {
         // Release locks on failure
         redisLockService.releaseLocks(lockKeys);
@@ -636,12 +647,12 @@ public BookingResponse lockSeats(LockRequest request) {
 ```java
 @Service
 public class RedisLockService {
-    
+
     private final StringRedisTemplate redisTemplate;
-    
+
     public boolean acquireMultipleLocks(List<String> keys, long ttlSeconds) {
         String lockValue = UUID.randomUUID().toString();
-        
+
         // Use Lua script for atomic multi-key locking
         String luaScript = """
             for i, key in ipairs(KEYS) do
@@ -656,14 +667,14 @@ public class RedisLockService {
             end
             return 1
             """;
-        
+
         Long result = redisTemplate.execute(
             new DefaultRedisScript<>(luaScript, Long.class),
             keys,
             String.valueOf(ttlSeconds),
             lockValue
         );
-        
+
         return result != null && result == 1;
     }
 }
@@ -676,7 +687,7 @@ public class RedisLockService {
 public class Booking {
     @Version
     private Long version;  // Optimistic lock
-    
+
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
     private BookingStatus status;
@@ -687,11 +698,11 @@ public class Booking {
 public Booking confirmBooking(UUID bookingId, String lockToken) {
     Booking booking = bookingRepository.findById(bookingId)
         .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-    
+
     if (!booking.getLockToken().equals(lockToken)) {
         throw new InvalidTokenException("Lock token mismatch");
     }
-    
+
     booking.setStatus(BookingStatus.CONFIRMED);
     return bookingRepository.save(booking);  // Version check happens here
 }
@@ -801,35 +812,35 @@ public Booking createBooking(BookingRequest request) {
 ```java
 @Component
 public class WaitingRoomFilter implements GlobalFilter, Ordered {
-    
+
     private final RedisTemplate<String, String> redisTemplate;
     private final WaitingRoomConfig config;
-    
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         if (!config.isEnabled()) {
             return chain.filter(exchange);
         }
-        
+
         String path = exchange.getRequest().getPath().value();
-        
+
         // Only apply to booking endpoints
         if (!path.startsWith("/api/v1/bookings")) {
             return chain.filter(exchange);
         }
-        
+
         // Check current active sessions
         Long activeCount = redisTemplate.opsForValue()
             .increment("active_booking_sessions");
-        
+
         if (activeCount > config.getMaxThreshold()) {
             // Put in waiting room
             String queuePosition = addToWaitingQueue(exchange);
-            
+
             return exchange.getResponse()
                 .writeWith(Mono.just(buildWaitingResponse(queuePosition)));
         }
-        
+
         // Grant access, set session TTL
         String sessionId = UUID.randomUUID().toString();
         redisTemplate.opsForValue().set(
@@ -837,10 +848,10 @@ public class WaitingRoomFilter implements GlobalFilter, Ordered {
             "active",
             Duration.ofSeconds(config.getSessionTtl())
         );
-        
+
         exchange.getResponse().getHeaders()
             .add("X-Session-Id", sessionId);
-        
+
         return chain.filter(exchange);
     }
 }
@@ -882,14 +893,14 @@ public class WaitingRoomFilter implements GlobalFilter, Ordered {
 ```java
 @Component
 public class BookingServiceHealthIndicator implements HealthIndicator {
-    
+
     private final RedisTemplate<String, String> redisTemplate;
     private final DataSource dataSource;
-    
+
     @Override
     public Health health() {
         Map<String, Object> details = new HashMap<>();
-        
+
         // Check Redis
         try {
             redisTemplate.getConnectionFactory().getConnection().ping();
@@ -898,7 +909,7 @@ public class BookingServiceHealthIndicator implements HealthIndicator {
             details.put("redis", "DOWN: " + e.getMessage());
             return Health.down().withDetails(details).build();
         }
-        
+
         // Check Database
         try (Connection conn = dataSource.getConnection()) {
             conn.isValid(2);
@@ -907,7 +918,7 @@ public class BookingServiceHealthIndicator implements HealthIndicator {
             details.put("database", "DOWN: " + e.getMessage());
             return Health.down().withDetails(details).build();
         }
-        
+
         return Health.up().withDetails(details).build();
     }
 }
@@ -918,14 +929,14 @@ public class BookingServiceHealthIndicator implements HealthIndicator {
 ```java
 @Service
 public class MovieServiceClient {
-    
+
     private final CircuitBreaker circuitBreaker;
     private final RestTemplate restTemplate;
-    
+
     public MovieServiceClient(CircuitBreakerRegistry registry) {
         this.circuitBreaker = registry.circuitBreaker("movie-service");
     }
-    
+
     public MovieResponse getMovie(UUID movieId) {
         return circuitBreaker.executeSupplier(() -> {
             return restTemplate.getForObject(
@@ -934,7 +945,7 @@ public class MovieServiceClient {
             );
         });
     }
-    
+
     // Fallback when circuit is open
     public MovieResponse getMovieFallback(UUID movieId, Exception e) {
         log.warn("Circuit breaker open for movie-service, returning cached data");
@@ -961,11 +972,11 @@ const layout = await fetch(`/layouts/screen-${screenId}.json`);
 @Scheduled(cron = "0 0 * * * *") // Every hour
 public void generateLayoutFiles() {
     List<Screen> screens = screenRepository.findAllActive();
-    
+
     for (Screen screen : screens) {
         ScreenLayout layout = buildLayout(screen);
         String json = objectMapper.writeValueAsString(layout);
-        
+
         // Write to /layouts directory
         Files.writeString(
             Path.of("layouts", "screen-" + screen.getId() + ".json"),
@@ -981,7 +992,7 @@ public void generateLayoutFiles() {
 // Instead of N individual Redis calls, use pipelining
 public void updateSeatStatuses(UUID showId, Map<UUID, String> updates) {
     String key = "show_seats:" + showId;
-    
+
     redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
         for (Map.Entry<UUID, String> entry : updates.entrySet()) {
             connection.hSet(
@@ -1007,7 +1018,7 @@ spring:
       max-lifetime: 1200000
       connection-timeout: 20000
       leak-detection-threshold: 60000
-      
+
   data:
     redis:
       lettuce:
@@ -1079,7 +1090,7 @@ spring:
 public class LockSeatsRequest {
     @NotNull(message = "Show ID is required")
     private UUID showId;
-    
+
     @NotEmpty(message = "At least one seat must be selected")
     @Size(max = 10, message = "Maximum 10 seats per booking")
     private List<@NotNull UUID> seatIds;
@@ -1104,7 +1115,7 @@ List<Movie> searchByTitle(@Param("query") String query);
 ```java
 @Configuration
 public class CorsConfig {
-    
+
     @Bean
     public CorsWebFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
@@ -1114,10 +1125,10 @@ public class CorsConfig {
         config.addAllowedHeader("*");
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-        
+
         return new CorsWebFilter(source);
     }
 }
@@ -1132,12 +1143,12 @@ public class CorsConfig {
 ```java
 @Component
 public class BookingMetrics {
-    
+
     private final MeterRegistry meterRegistry;
     private final Counter bookingsCreated;
     private final Counter bookingsFailed;
     private final Timer lockDuration;
-    
+
     public BookingMetrics(MeterRegistry registry) {
         this.meterRegistry = registry;
         this.bookingsCreated = Counter.builder("bookings.created")
@@ -1150,11 +1161,11 @@ public class BookingMetrics {
             .description("Time taken to acquire seat locks")
             .register(registry);
     }
-    
+
     public void recordSuccessfulBooking() {
         bookingsCreated.increment();
     }
-    
+
     public void recordLockDuration(long milliseconds) {
         lockDuration.record(Duration.ofMillis(milliseconds));
     }
@@ -1169,20 +1180,20 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'api-gateway'
+  - job_name: "api-gateway"
     static_configs:
-      - targets: ['api-gateway:8080']
-    metrics_path: '/actuator/prometheus'
-    
-  - job_name: 'movie-service'
+      - targets: ["api-gateway:8080"]
+    metrics_path: "/actuator/prometheus"
+
+  - job_name: "movie-service"
     static_configs:
-      - targets: ['movie-service:8085']
-    metrics_path: '/actuator/prometheus'
-    
-  - job_name: 'booking-service'
+      - targets: ["movie-service:8085"]
+    metrics_path: "/actuator/prometheus"
+
+  - job_name: "booking-service"
     static_configs:
-      - targets: ['booking-service:8083']
-    metrics_path: '/actuator/prometheus'
+      - targets: ["booking-service:8083"]
+    metrics_path: "/actuator/prometheus"
 ```
 
 ### Grafana Dashboard Panels
@@ -1230,7 +1241,7 @@ groups:
           severity: critical
         annotations:
           summary: "High error rate detected"
-          
+
       - alert: SlowBookingLocks
         expr: histogram_quantile(0.99, rate(bookings_lock_duration_seconds_bucket[5m])) > 2
         for: 5m
@@ -1238,7 +1249,7 @@ groups:
           severity: warning
         annotations:
           summary: "Booking lock acquisition is slow"
-          
+
       - alert: CacheHitRateLow
         expr: redis_cache_hits / (redis_cache_hits + redis_cache_misses) < 0.80
         for: 10m
@@ -1254,21 +1265,21 @@ groups:
 
 ### Graceful Degradation Matrix
 
-| Component Failure | Impact | Mitigation |
-|------------------|--------|------------|
-| Redis Down | No seat caching | Fall back to DB queries, disable new bookings temporarily |
-| DB Primary Down | No writes | Promote replica, queue writes |
-| DB Replica Down | Slower reads | Route all traffic to primary |
-| Movie Service Down | No browsing | Serve cached data from CDN/Redis |
-| Booking Service Down | No bookings | Show "maintenance" message, queue requests |
-| Notification Service Down | No emails | Queue notifications, retry later |
+| Component Failure         | Impact          | Mitigation                                                |
+| ------------------------- | --------------- | --------------------------------------------------------- |
+| Redis Down                | No seat caching | Fall back to DB queries, disable new bookings temporarily |
+| DB Primary Down           | No writes       | Promote replica, queue writes                             |
+| DB Replica Down           | Slower reads    | Route all traffic to primary                              |
+| Movie Service Down        | No browsing     | Serve cached data from CDN/Redis                          |
+| Booking Service Down      | No bookings     | Show "maintenance" message, queue requests                |
+| Notification Service Down | No emails       | Queue notifications, retry later                          |
 
 ### Retry Configuration
 
 ```java
 @Configuration
 public class RetryConfig {
-    
+
     @Bean
     public RetryTemplate retryTemplate() {
         return RetryTemplate.builder()
@@ -1292,18 +1303,18 @@ public void updateCache(UUID showId, Map<UUID, String> updates) {
 ```java
 @Component
 public class FailedBookingHandler {
-    
+
     @RabbitListener(queues = "booking-dlq")
     public void handleFailedBooking(FailedBookingMessage message) {
         log.error("Booking failed permanently: {}", message);
-        
+
         // Store for manual review
         failedBookingRepository.save(FailedBooking.builder()
             .originalRequest(message.getRequest())
             .errorMessage(message.getError())
             .failedAt(LocalDateTime.now())
             .build());
-        
+
         // Notify ops team
         alertService.notifyOps("Booking failure", message);
     }
@@ -1315,12 +1326,14 @@ public class FailedBookingHandler {
 ## Future Improvements
 
 ### 1. Event Sourcing for Bookings
+
 ```
 Event Store:
   SeatSelected → SeatLocked → PaymentInitiated → PaymentCompleted → BookingConfirmed
 ```
 
 ### 2. GraphQL API for Flexible Queries
+
 ```graphql
 query {
   movie(id: "...") {
@@ -1337,6 +1350,7 @@ query {
 ```
 
 ### 3. Real-time Seat Updates via WebSocket
+
 ```javascript
 // Client subscribes to seat updates
 ws.subscribe(`/topic/show/${showId}/seats`, (update) => {
@@ -1345,11 +1359,13 @@ ws.subscribe(`/topic/show/${showId}/seats`, (update) => {
 ```
 
 ### 4. Machine Learning for Demand Prediction
+
 - Dynamic pricing based on demand
 - Show scheduling optimization
 - Fraud detection
 
 ### 5. Multi-Region Deployment
+
 - Active-active setup across regions
 - Geo-routing for lowest latency
 - Cross-region data replication
@@ -1360,39 +1376,39 @@ ws.subscribe(`/topic/show/${showId}/seats`, (update) => {
 
 ### A. API Endpoints Summary
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/movies` | List all movies |
-| GET | `/api/v1/movies/{id}` | Get movie details |
-| GET | `/api/v1/movies/{id}/shows` | Get shows for a movie |
-| GET | `/api/v1/shows/{id}` | Get show details |
-| GET | `/api/v1/seats/show/{showId}` | Get seat availability |
-| POST | `/api/v1/bookings/lock` | Lock selected seats |
-| POST | `/api/v1/bookings/confirm` | Confirm booking |
-| GET | `/api/v1/bookings/{id}` | Get booking details |
+| Method | Endpoint                      | Description           |
+| ------ | ----------------------------- | --------------------- |
+| GET    | `/api/v1/movies`              | List all movies       |
+| GET    | `/api/v1/movies/{id}`         | Get movie details     |
+| GET    | `/api/v1/movies/{id}/shows`   | Get shows for a movie |
+| GET    | `/api/v1/shows/{id}`          | Get show details      |
+| GET    | `/api/v1/seats/show/{showId}` | Get seat availability |
+| POST   | `/api/v1/bookings/lock`       | Lock selected seats   |
+| POST   | `/api/v1/bookings/confirm`    | Confirm booking       |
+| GET    | `/api/v1/bookings/{id}`       | Get booking details   |
 
 ### B. Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | localhost:5432 |
-| `REDIS_HOST` | Redis server hostname | localhost |
-| `REDIS_PORT` | Redis server port | 6379 |
-| `SEAT_LOCK_TTL_SECONDS` | Seat lock duration | 300 |
-| `WAITING_ROOM_THRESHOLD` | Max concurrent bookings | 5000 |
+| Variable                 | Description                  | Default        |
+| ------------------------ | ---------------------------- | -------------- |
+| `DATABASE_URL`           | PostgreSQL connection string | localhost:5432 |
+| `REDIS_HOST`             | Redis server hostname        | localhost      |
+| `REDIS_PORT`             | Redis server port            | 6379           |
+| `SEAT_LOCK_TTL_SECONDS`  | Seat lock duration           | 300            |
+| `WAITING_ROOM_THRESHOLD` | Max concurrent bookings      | 5000           |
 
 ### C. Performance Benchmarks
 
-| Metric | Target | Achieved |
-|--------|--------|----------|
-| Seat status query | < 50ms | 12ms (cache hit) |
-| Lock seats | < 200ms | 89ms |
-| Confirm booking | < 500ms | 234ms |
-| Concurrent locks | 10,000/show | Tested 15,000 |
-| Cache hit rate | > 90% | 94.7% |
+| Metric            | Target      | Achieved         |
+| ----------------- | ----------- | ---------------- |
+| Seat status query | < 50ms      | 12ms (cache hit) |
+| Lock seats        | < 200ms     | 89ms             |
+| Confirm booking   | < 500ms     | 234ms            |
+| Concurrent locks  | 10,000/show | Tested 15,000    |
+| Cache hit rate    | > 90%       | 94.7%            |
 
 ---
 
-*Document Version: 1.0*  
-*Last Updated: February 2026*  
-*Author: System Design Team*
+_Document Version: 1.0_  
+_Last Updated: February 2026_  
+_Author: System Design Team_

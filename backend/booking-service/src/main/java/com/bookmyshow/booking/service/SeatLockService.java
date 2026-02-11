@@ -62,6 +62,36 @@ public class SeatLockService {
      */
     @Transactional
     public String lockSeats(UUID showId, List<UUID> seatIds) {
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // OPTIMIZATION: Fail-fast check against Redis cache
+        // Avoids waiting for distributed lock if seats are obviously unavailable
+        // This is an optimization only - DB check is still the source of truth
+        // ═══════════════════════════════════════════════════════════════════════
+        Map<String, String> cachedStatuses = seatCacheService.getShowSeatStatuses(showId);
+        if (!cachedStatuses.isEmpty()) {
+            List<UUID> unavailableFromCache = new ArrayList<>();
+            for (UUID seatId : seatIds) {
+                String cached = cachedStatuses.get(seatId.toString());
+                if (cached != null) {
+                    String[] parts = cached.split(":");
+                    if (parts.length >= 2 && !"AVAILABLE".equals(parts[1])) {
+                        unavailableFromCache.add(seatId);
+                    }
+                }
+            }
+            if (!unavailableFromCache.isEmpty()) {
+                log.debug("Fail-fast: {} seats unavailable per cache check", unavailableFromCache.size());
+                throw new SeatUnavailableException(
+                        "Some selected seats are no longer available.",
+                        unavailableFromCache
+                );
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // CRITICAL SECTION: Distributed lock + DB verification (source of truth)
+        // ═══════════════════════════════════════════════════════════════════════
         String lockKey = LOCK_KEY_PREFIX + showId;
         RLock lock = redissonClient.getLock(lockKey);
 
@@ -73,7 +103,7 @@ public class SeatLockService {
             }
 
             try {
-                // Fetch requested seats and verify they are all available
+                // Fetch requested seats and verify they are all available (DB is source of truth)
                 List<ShowSeat> requestedSeats = showSeatRepository.findByShowIdAndIdIn(showId, seatIds);
 
                 if (requestedSeats.size() != seatIds.size()) {
