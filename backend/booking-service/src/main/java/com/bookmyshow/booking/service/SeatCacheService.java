@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 /**
  * SeatCacheService — Redis-backed cache layer for seat availability.
@@ -18,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  * Data Structure: Redis Hash per show
  *   Key:   "show_seats:{showId}"
  *   Field: "{showSeatId}"
- *   Value: "{status}:{price}"
+ *   Value: "{seatId}:{status}:{price}"
  *
  * Read Path:  Check Redis hash first → on MISS, return empty (caller fills from DB)
  * Write Path: After any DB mutation (lock/confirm/cancel), update the hash fields (write-through)
@@ -40,7 +39,7 @@ public class SeatCacheService {
     /**
      * Try to read all seat statuses from cache.
      *
-     * @return map of showSeatId → "status:price", or empty map on cache miss
+     * @return map of showSeatId → "seatId:status:price", or empty map on cache miss
      */
     public Map<String, String> getShowSeatStatuses(UUID showId) {
         String key = CACHE_KEY_PREFIX + showId;
@@ -62,6 +61,7 @@ public class SeatCacheService {
 
     /**
      * Populate the full cache from a list of ShowSeatDTOs (called on cache miss).
+     * Stores: showSeatId → seatId:status:price
      */
     public void populateCache(UUID showId, List<ShowSeatDTO> seats) {
         String key = CACHE_KEY_PREFIX + showId;
@@ -70,7 +70,7 @@ public class SeatCacheService {
             for (ShowSeatDTO seat : seats) {
                 hashEntries.put(
                         seat.getId().toString(),
-                        seat.getStatus() + ":" + seat.getPrice().toPlainString()
+                        seat.getSeatId() + ":" + seat.getStatus() + ":" + seat.getPrice().toPlainString()
                 );
             }
             redisTemplate.opsForHash().putAll(key, hashEntries);
@@ -84,6 +84,7 @@ public class SeatCacheService {
     /**
      * Write-through: update specific seat statuses in the cache.
      * Called after every DB mutation (lock, confirm, cancel, release).
+     * Preserves the seatId portion, only updates status and price.
      */
     public void updateSeatStatuses(UUID showId, Map<UUID, String> seatStatusUpdates, Map<UUID, BigDecimal> seatPrices) {
         String key = CACHE_KEY_PREFIX + showId;
@@ -95,12 +96,28 @@ public class SeatCacheService {
                 return;
             }
 
+            // Read existing entries to preserve seatId
+            Map<Object, Object> existingEntries = redisTemplate.opsForHash().entries(key);
+
             Map<String, String> updates = new HashMap<>(seatStatusUpdates.size());
             for (Map.Entry<UUID, String> entry : seatStatusUpdates.entrySet()) {
+                String showSeatIdStr = entry.getKey().toString();
                 BigDecimal price = seatPrices.getOrDefault(entry.getKey(), BigDecimal.ZERO);
+                
+                // Get existing seatId from cache
+                String existingValue = existingEntries.get(showSeatIdStr) != null 
+                        ? existingEntries.get(showSeatIdStr).toString() : null;
+                String seatId = "";
+                if (existingValue != null) {
+                    String[] parts = existingValue.split(":", 3);
+                    if (parts.length >= 1) {
+                        seatId = parts[0];
+                    }
+                }
+                
                 updates.put(
-                        entry.getKey().toString(),
-                        entry.getValue() + ":" + price.toPlainString()
+                        showSeatIdStr,
+                        seatId + ":" + entry.getValue() + ":" + price.toPlainString()
                 );
             }
             redisTemplate.opsForHash().putAll(key, updates);

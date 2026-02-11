@@ -81,17 +81,24 @@ export default function SeatSelectionPage() {
   const [totalAmount, setTotalAmount] = useState(0);
 
   useEffect(() => {
-    // Fetch show details to get screenId for CDN layout
-    showApi
-      .getShow(showId)
-      .then((res) => {
+    // Fetch show details to get screenId for CDN layout, then fetch seats
+    async function init() {
+      try {
+        const res = await showApi.getShow(showId);
         const show = res.data?.data;
         if (show?.screenId) {
           setScreenId(show.screenId);
+          // Now fetch seats with the screenId available
+          await fetchSeatsWithLayout(show.screenId);
+          return;
         }
-      })
-      .catch(() => {});
-    fetchSeats();
+      } catch {
+        // Fall through to fallback
+      }
+      // Fallback if no screenId
+      await fetchSeatsFallback();
+    }
+    init();
     return () => {
       if (!showGuestForm) clearSeats();
     };
@@ -126,42 +133,57 @@ export default function SeatSelectionPage() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   }, []);
 
-  async function fetchSeats() {
+  /**
+   * CDN-decoupled flow: static layout from CDN + dynamic status from API
+   * This avoids hitting DB for layout data on every request
+   */
+  async function fetchSeatsWithLayout(layoutScreenId: string) {
     try {
-      // Try CDN-decoupled flow: static layout + dynamic status
-      if (screenId || cachedLayout) {
-        try {
-          let layout = cachedLayout;
-          if (!layout && screenId) {
-            const layoutRes = await layoutApi.getScreenLayout(screenId);
-            layout = layoutRes.data as ScreenLayout;
-            setCachedLayout(layout);
-          }
-          if (layout) {
-            const statusRes = await showApi.getSeatStatuses(showId);
-            const statusData = statusRes.data?.data;
-            if (statusData?.seats) {
-              const merged = mergeLayoutAndStatus(
-                layout,
-                statusData.seats,
-                showId,
-              );
-              setSeats(merged);
-              return;
-            }
-          }
-        } catch {
-          // CDN layout not available — fall back to full endpoint
-        }
+      let layout = cachedLayout;
+      if (!layout) {
+        const layoutRes = await layoutApi.getScreenLayout(layoutScreenId);
+        layout = layoutRes.data as ScreenLayout;
+        setCachedLayout(layout);
       }
+      // Only fetch lightweight status (cache-first on backend)
+      const statusRes = await showApi.getSeatStatuses(showId);
+      const statusData = statusRes.data?.data;
+      if (statusData?.seats) {
+        const merged = mergeLayoutAndStatus(layout, statusData.seats, showId);
+        setSeats(merged);
+      }
+    } catch {
+      // CDN layout not available — fall back to full endpoint
+      await fetchSeatsFallback();
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      // Fallback: full endpoint (layout + status in one call)
+  /**
+   * Fallback: full endpoint (layout + status in one call) — hits DB
+   */
+  async function fetchSeatsFallback() {
+    try {
       const res = await showApi.getShowSeats(showId);
       setSeats(res.data?.data || []);
     } catch (error) {
       toast.error("Failed to load seats");
     } finally {
       setLoading(false);
+    }
+  }
+
+  /**
+   * Refresh seats — uses cached layout if available, otherwise fallback
+   */
+  async function fetchSeats() {
+    if (screenId && cachedLayout) {
+      await fetchSeatsWithLayout(screenId);
+    } else if (screenId) {
+      await fetchSeatsWithLayout(screenId);
+    } else {
+      await fetchSeatsFallback();
     }
   }
 

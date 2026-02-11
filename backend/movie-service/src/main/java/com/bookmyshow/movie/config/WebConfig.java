@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.io.File;
 import java.nio.file.Paths;
 
 /**
@@ -19,7 +20,17 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String absolutePath = Paths.get(layoutOutputDir).toAbsolutePath().toUri().toString();
+        // Resolve relative to the project directory (where pom.xml is)
+        // This works whether started from project root or module directory
+        File layoutDir = new File(layoutOutputDir);
+        if (!layoutDir.isAbsolute()) {
+            // Try relative to current directory first
+            if (!layoutDir.exists()) {
+                // Try relative to module directory (when running from project root)
+                layoutDir = new File("backend/movie-service/" + layoutOutputDir);
+            }
+        }
+        String absolutePath = layoutDir.getAbsoluteFile().toURI().toString();
         registry.addResourceHandler("/layouts/**")
                 .addResourceLocations(absolutePath)
                 .setCachePeriod(86400); // 24-hour browser cache (static data)

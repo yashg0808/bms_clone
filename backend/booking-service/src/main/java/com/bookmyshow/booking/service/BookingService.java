@@ -302,38 +302,48 @@ public class BookingService {
 
     /**
      * Get seat availability for a show with full layout info.
-     * Uses read-through cache: Redis Hash → on MISS → Postgres → populate cache.
+     * 
+     * Flow:
+     * 1. Try Redis cache first for status (NO DB hit on cache hit for status)
+     * 2. On cache miss: query DB, populate cache (write-through), return
+     * 
+     * Note: This endpoint returns full layout data. For high-traffic scenarios,
+     * prefer using getShowSeatStatuses() with CDN-served static layout files.
      */
     @Transactional(readOnly = true)
     public List<ShowSeatDTO> getShowSeats(UUID showId) {
-        // 1. Always fetch layout + status from DB (layout data is not in cache)
-        List<Object[]> rows = showSeatRepository.findShowSeatsWithSeatInfo(showId);
-        List<ShowSeatDTO> dbSeats = rows.stream().map(this::mapRowToShowSeatDTO).collect(Collectors.toList());
-
-        if (dbSeats.isEmpty()) {
-            return dbSeats;
-        }
-
-        // 2. Try to overlay status from Redis cache (much faster for repeat reads)
+        // Try Redis cache first — format: showSeatId → seatId:status:price
         Map<String, String> cached = seatCacheService.getShowSeatStatuses(showId);
 
         if (!cached.isEmpty()) {
-            // Cache HIT — overlay the cached status onto the DB layout
-            for (ShowSeatDTO seat : dbSeats) {
+            // Cache HIT — but we still need layout data (row, number, type, column) from DB
+            // This is the trade-off: layout is static and could be served from CDN instead
+            List<Object[]> rows = showSeatRepository.findShowSeatsWithSeatInfo(showId);
+            List<ShowSeatDTO> seats = rows.stream().map(this::mapRowToShowSeatDTO).collect(Collectors.toList());
+
+            // Overlay cached status onto DB layout
+            for (ShowSeatDTO seat : seats) {
                 String cachedValue = cached.get(seat.getId().toString());
                 if (cachedValue != null) {
-                    String[] parts = cachedValue.split(":", 2);
-                    seat.setStatus(parts[0]);
-                    // price from cache for consistency
-                    if (parts.length > 1) {
+                    String[] parts = cachedValue.split(":", 3);
+                    // Format: seatId:status:price
+                    if (parts.length >= 2) seat.setStatus(parts[1]);
+                    if (parts.length >= 3) {
                         try {
-                            seat.setPrice(new java.math.BigDecimal(parts[1]));
+                            seat.setPrice(new BigDecimal(parts[2]));
                         } catch (NumberFormatException ignored) { }
                     }
                 }
             }
-        } else {
-            // Cache MISS — populate cache from the DB result set
+            return seats;
+        }
+
+        // Cache MISS — query DB, populate cache, return
+        log.debug("Cache miss for show {}, querying DB for full seat data", showId);
+        List<Object[]> rows = showSeatRepository.findShowSeatsWithSeatInfo(showId);
+        List<ShowSeatDTO> dbSeats = rows.stream().map(this::mapRowToShowSeatDTO).collect(Collectors.toList());
+
+        if (!dbSeats.isEmpty()) {
             seatCacheService.populateCache(showId, dbSeats);
         }
 
@@ -351,32 +361,27 @@ public class BookingService {
     /**
      * Get lightweight seat statuses for a show (no layout data).
      * For CDN-decoupled flow: frontend fetches layout from static JSON, status from this method.
-     * Uses the same read-through cache as getShowSeats.
+     * 
+     * Flow:
+     * 1. Try Redis cache first (NO DB hit on cache hit)
+     * 2. On cache miss: query DB, populate cache (write-through), return
      */
     @Transactional(readOnly = true)
     public SeatStatusResponse getShowSeatStatuses(UUID showId) {
-        // Try Redis cache first
+        // Try Redis cache first — format: showSeatId → seatId:status:price
         Map<String, String> cached = seatCacheService.getShowSeatStatuses(showId);
 
         if (!cached.isEmpty()) {
-            // Cache HIT — build response from cache
+            // Cache HIT — build response directly from cache (NO DB query!)
             List<SeatStatusResponse.SeatStatus> statuses = new ArrayList<>();
-            // We need seatId (template) mapping — cache only has showSeatId. Query lightweight.
-            List<Object[]> rows = showSeatRepository.findShowSeatsWithSeatInfo(showId);
-            for (Object[] row : rows) {
-                UUID showSeatId = (UUID) row[0];
-                UUID seatId = (UUID) row[2];
-                String cachedValue = cached.get(showSeatId.toString());
-                String status;
-                BigDecimal price;
-                if (cachedValue != null) {
-                    String[] parts = cachedValue.split(":", 2);
-                    status = parts[0];
-                    price = parts.length > 1 ? new BigDecimal(parts[1]) : (BigDecimal) row[4];
-                } else {
-                    status = (String) row[3];
-                    price = (BigDecimal) row[4];
-                }
+            for (Map.Entry<String, String> entry : cached.entrySet()) {
+                UUID showSeatId = UUID.fromString(entry.getKey());
+                String[] parts = entry.getValue().split(":", 3);
+                // Format: seatId:status:price
+                UUID seatId = parts.length >= 1 ? UUID.fromString(parts[0]) : showSeatId;
+                String status = parts.length >= 2 ? parts[1] : "AVAILABLE";
+                BigDecimal price = parts.length >= 3 ? new BigDecimal(parts[2]) : BigDecimal.ZERO;
+                
                 statuses.add(SeatStatusResponse.SeatStatus.builder()
                         .showSeatId(showSeatId)
                         .seatId(seatId)
@@ -384,10 +389,12 @@ public class BookingService {
                         .price(price)
                         .build());
             }
+            log.debug("Returning {} seat statuses from cache for show {}", statuses.size(), showId);
             return SeatStatusResponse.builder().showId(showId).seats(statuses).build();
         }
 
         // Cache MISS — query DB, populate cache, return
+        log.debug("Cache miss for show {}, querying DB", showId);
         List<Object[]> rows = showSeatRepository.findShowSeatsWithSeatInfo(showId);
         List<ShowSeatDTO> dtoList = rows.stream().map(this::mapRowToShowSeatDTO).collect(Collectors.toList());
         seatCacheService.populateCache(showId, dtoList);
