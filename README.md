@@ -5,6 +5,7 @@
 This document provides comprehensive technical documentation for the BookMyShow Clone, a distributed movie ticket booking platform built using microservices architecture. The system is designed to handle high-concurrency scenarios typical of popular movie releases while maintaining data consistency and providing a seamless user experience.
 
 **Key Technical Highlights:**
+
 - **Microservices Architecture**: 4 backend services with clear separation of concerns
 - **Three-Layer Concurrency Control**: Redisson distributed locks + PostgreSQL optimistic locking + Redis TTL
 - **Write-Through Caching**: Redis cache with configurable TTLs per entity type
@@ -102,27 +103,27 @@ This document provides comprehensive technical documentation for the BookMyShow 
 
 ### 1.2 Technology Stack
 
-| Layer | Technology | Version | Purpose |
-|-------|------------|---------|---------|
-| **Frontend** | Next.js | 14.x | React SSR framework |
-| | TypeScript | 5.x | Type safety |
-| | Tailwind CSS | 3.x | Styling |
-| | Zustand | 4.x | State management |
-| **API Gateway** | Spring Cloud Gateway | 3.2.1 | Reactive routing, filters |
-| **Backend** | Java | 17 | Primary language |
-| | Spring Boot | 3.2.1 | Microservice framework |
-| | Spring Data JPA | 3.2.1 | ORM |
-| | Redisson | 3.25 | Distributed locking |
-| **Database** | PostgreSQL | 15 | Primary data store |
-| | Flyway | 9.x | Schema migrations |
-| **Cache** | Redis | 7 | Caching + locking |
-| **Messaging** | Apache Kafka | 3.5 | Event streaming |
-| **Monitoring** | Prometheus | 2.48 | Metrics |
-| | Grafana | 10.2 | Dashboards |
-| | Jaeger | 1.52 | Distributed tracing |
-| **Container** | Docker | 24.x | Containerization |
-| | Kubernetes | 1.28 | Orchestration |
-| | Helm | 3.x | Package manager |
+| Layer           | Technology           | Version | Purpose                   |
+| --------------- | -------------------- | ------- | ------------------------- |
+| **Frontend**    | Next.js              | 14.x    | React SSR framework       |
+|                 | TypeScript           | 5.x     | Type safety               |
+|                 | Tailwind CSS         | 3.x     | Styling                   |
+|                 | Zustand              | 4.x     | State management          |
+| **API Gateway** | Spring Cloud Gateway | 3.2.1   | Reactive routing, filters |
+| **Backend**     | Java                 | 17      | Primary language          |
+|                 | Spring Boot          | 3.2.1   | Microservice framework    |
+|                 | Spring Data JPA      | 3.2.1   | ORM                       |
+|                 | Redisson             | 3.25    | Distributed locking       |
+| **Database**    | PostgreSQL           | 15      | Primary data store        |
+|                 | Flyway               | 9.x     | Schema migrations         |
+| **Cache**       | Redis                | 7       | Caching + locking         |
+| **Messaging**   | Apache Kafka         | 3.5     | Event streaming           |
+| **Monitoring**  | Prometheus           | 2.48    | Metrics                   |
+|                 | Grafana              | 10.2    | Dashboards                |
+|                 | Jaeger               | 1.52    | Distributed tracing       |
+| **Container**   | Docker               | 24.x    | Containerization          |
+|                 | Kubernetes           | 1.28    | Orchestration             |
+|                 | Helm                 | 3.x     | Package manager           |
 
 ---
 
@@ -133,6 +134,7 @@ This document provides comprehensive technical documentation for the BookMyShow 
 The **catalog and scheduling service** responsible for all movie-related data.
 
 #### Responsibilities
+
 - Movie catalog management (CRUD, search, featured)
 - City and theater management
 - Screen and seat template management
@@ -176,23 +178,24 @@ movie-service/
 
 #### API Endpoints
 
-| Method | Endpoint | Description | Cache |
-|--------|----------|-------------|-------|
-| GET | `/api/v1/movies` | Paginated movie list | `movies-list` (10m) |
-| GET | `/api/v1/movies/{id}` | Movie details | `movies` (1h) |
-| GET | `/api/v1/movies/featured` | Featured movies | `featured-movies` (15m) |
-| GET | `/api/v1/movies/city/{cityId}` | Movies in city | `movies-by-city` (10m) |
-| GET | `/api/v1/cities` | All cities | `cities` (24h) |
-| GET | `/api/v1/theaters/city/{cityId}` | Theaters in city | `theaters` (6h) |
-| GET | `/api/v1/shows/{id}` | Show details | `shows` (5m) |
-| GET | `/api/v1/movies/{id}/shows` | Shows for movie | `shows-by-movie` (5m) |
-| GET | `/layouts/screen-{id}.json` | Static seat layout | CDN/browser cached |
+| Method | Endpoint                         | Description          | Cache                   |
+| ------ | -------------------------------- | -------------------- | ----------------------- |
+| GET    | `/api/v1/movies`                 | Paginated movie list | `movies-list` (10m)     |
+| GET    | `/api/v1/movies/{id}`            | Movie details        | `movies` (1h)           |
+| GET    | `/api/v1/movies/featured`        | Featured movies      | `featured-movies` (15m) |
+| GET    | `/api/v1/movies/city/{cityId}`   | Movies in city       | `movies-by-city` (10m)  |
+| GET    | `/api/v1/cities`                 | All cities           | `cities` (24h)          |
+| GET    | `/api/v1/theaters/city/{cityId}` | Theaters in city     | `theaters` (6h)         |
+| GET    | `/api/v1/shows/{id}`             | Show details         | `shows` (5m)            |
+| GET    | `/api/v1/movies/{id}/shows`      | Shows for movie      | `shows-by-movie` (5m)   |
+| GET    | `/layouts/screen-{id}.json`      | Static seat layout   | CDN/browser cached      |
 
 ### 2.2 Booking Service (Port 8083)
 
 The **transactional core** handling all seat locking and booking operations.
 
 #### Responsibilities
+
 - Seat availability queries with real-time status
 - Distributed seat locking with three-layer protection
 - Booking lifecycle management (lock → confirm → cancel)
@@ -229,21 +232,22 @@ booking-service/
 
 #### API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/seats/show/{showId}` | All seats with layout |
-| GET | `/api/v1/seats/status/{showId}` | Status-only (lightweight) |
-| POST | `/api/v1/bookings/lock` | Lock seats (8-min TTL) |
-| POST | `/api/v1/bookings/confirm` | Confirm with guest info |
-| POST | `/api/v1/bookings/{id}/cancel` | Cancel booking |
-| GET | `/api/v1/bookings/{id}` | Booking by UUID |
-| GET | `/api/v1/bookings/number/{num}` | Booking by BMS number |
+| Method | Endpoint                        | Description               |
+| ------ | ------------------------------- | ------------------------- |
+| GET    | `/api/v1/seats/show/{showId}`   | All seats with layout     |
+| GET    | `/api/v1/seats/status/{showId}` | Status-only (lightweight) |
+| POST   | `/api/v1/bookings/lock`         | Lock seats (8-min TTL)    |
+| POST   | `/api/v1/bookings/confirm`      | Confirm with guest info   |
+| POST   | `/api/v1/bookings/{id}/cancel`  | Cancel booking            |
+| GET    | `/api/v1/bookings/{id}`         | Booking by UUID           |
+| GET    | `/api/v1/bookings/number/{num}` | Booking by BMS number     |
 
 ### 2.3 Notification Service (Port 8086)
 
 The **async communication service** consuming events and sending notifications.
 
 #### Responsibilities
+
 - Kafka event consumption
 - Email delivery (SMTP)
 - SMS delivery (Twilio, optional)
@@ -252,8 +256,8 @@ The **async communication service** consuming events and sending notifications.
 
 #### Kafka Topics
 
-| Topic | Trigger | Action |
-|-------|---------|--------|
+| Topic               | Trigger           | Action                  |
+| ------------------- | ----------------- | ----------------------- |
 | `booking.confirmed` | Booking confirmed | Send confirmation email |
 | `booking.cancelled` | Booking cancelled | Send cancellation email |
 
@@ -262,6 +266,7 @@ The **async communication service** consuming events and sending notifications.
 The **entry point** for all client requests, built on Spring Cloud Gateway.
 
 #### Responsibilities
+
 - Request routing to downstream services
 - Waiting room surge protection
 - CORS header management
@@ -338,6 +343,7 @@ The **entry point** for all client requests, built on Spring Cloud Gateway.
 ### 3.2 Key Tables
 
 #### `seats` — Template Table
+
 Physical seat layout definition per screen. Static data that serves as a template.
 
 ```sql
@@ -353,6 +359,7 @@ CREATE TABLE seats (
 ```
 
 #### `show_seats` — Per-Show Instances
+
 Created for every seat × every show. High-volume table (~188K rows for 1,470 shows).
 
 ```sql
@@ -365,14 +372,14 @@ CREATE TABLE show_seats (
     locked_by   VARCHAR(255),                     -- Lock token UUID
     locked_at   TIMESTAMP WITH TIME ZONE,
     version     BIGINT DEFAULT 0,                 -- Optimistic locking
-    
+
     UNIQUE(show_id, seat_id)
 );
 
 -- Critical indexes
 CREATE INDEX idx_show_seats_show_id ON show_seats(show_id);
 CREATE INDEX idx_show_seats_status ON show_seats(show_id, status);
-CREATE INDEX idx_show_seats_locked ON show_seats(status, locked_at) 
+CREATE INDEX idx_show_seats_locked ON show_seats(status, locked_at)
     WHERE status = 'LOCKED';
 ```
 
@@ -393,7 +400,7 @@ CREATE TABLE bookings (
     lock_token      VARCHAR(255),
     expires_at      TIMESTAMP WITH TIME ZONE,
     version         BIGINT DEFAULT 0,
-    
+
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -404,14 +411,14 @@ CREATE INDEX idx_bookings_expires ON bookings(expires_at) WHERE status = 'PENDIN
 
 ### 3.3 Schema Migrations (Flyway)
 
-| Version | File | Description |
-|---------|------|-------------|
-| V1 | `V1__initial_schema.sql` | Core tables, enums, constraints |
-| V2 | `V2__add_indexes.sql` | Performance indexes |
-| V3 | `V3__add_partitions.sql` | Table partitioning for shows |
-| V4 | `V4__add_payment_columns.sql` | Payment fields (legacy) |
-| V5 | `V5__drop_auth_foreign_keys.sql` | Remove user FK constraints |
-| V6 | `V6__remove_users_payments_add_guest.sql` | Guest model migration |
+| Version | File                                      | Description                     |
+| ------- | ----------------------------------------- | ------------------------------- |
+| V1      | `V1__initial_schema.sql`                  | Core tables, enums, constraints |
+| V2      | `V2__add_indexes.sql`                     | Performance indexes             |
+| V3      | `V3__add_partitions.sql`                  | Table partitioning for shows    |
+| V4      | `V4__add_payment_columns.sql`             | Payment fields (legacy)         |
+| V5      | `V5__drop_auth_foreign_keys.sql`          | Remove user FK constraints      |
+| V6      | `V6__remove_users_payments_add_guest.sql` | Guest model migration           |
 
 ---
 
@@ -502,39 +509,39 @@ The seat status cache uses a **write-through** pattern to ensure consistency:
 // Cache format: {seatId}:{status}:{price}
 // Example: "550e8400-e29b-41d4-a716-446655440000:LOCKED:350.00"
 
-public void updateSeatStatuses(UUID showId, Map<UUID, String> statusUpdates, 
+public void updateSeatStatuses(UUID showId, Map<UUID, String> statusUpdates,
                                Map<UUID, BigDecimal> prices) {
     String key = "show_seats:" + showId;
-    
+
     // Only update if cache exists (don't create stale partial cache)
     if (!redisTemplate.hasKey(key)) return;
-    
+
     // Read existing to preserve seatId
     Map<Object, Object> existing = redisTemplate.opsForHash().entries(key);
-    
+
     Map<String, String> updates = new HashMap<>();
     for (Map.Entry<UUID, String> entry : statusUpdates.entrySet()) {
         String showSeatId = entry.getKey().toString();
         String existingValue = existing.get(showSeatId).toString();
         String seatId = existingValue.split(":")[0];  // Preserve seatId
-        
-        updates.put(showSeatId, 
+
+        updates.put(showSeatId,
             seatId + ":" + entry.getValue() + ":" + prices.get(entry.getKey()));
     }
-    
+
     redisTemplate.opsForHash().putAll(key, updates);
 }
 ```
 
 ### 4.3 Cache Invalidation Strategy
 
-| Event | Caches Invalidated |
-|-------|-------------------|
-| Movie created/updated | `movies`, `movies-list`, `movies-by-city`, `featured-movies` |
-| Show created | `shows-by-movie` |
-| Show deleted | `shows`, `shows-by-movie` |
-| Seats locked/confirmed/released | `show_seats:{showId}` (updated, not evicted) |
-| Theater created/updated | `theaters` |
+| Event                           | Caches Invalidated                                           |
+| ------------------------------- | ------------------------------------------------------------ |
+| Movie created/updated           | `movies`, `movies-list`, `movies-by-city`, `featured-movies` |
+| Show created                    | `shows-by-movie`                                             |
+| Show deleted                    | `shows`, `shows-by-movie`                                    |
+| Seats locked/confirmed/released | `show_seats:{showId}` (updated, not evicted)                 |
+| Theater created/updated         | `theaters`                                                   |
 
 ### 4.4 Admin Cache Management
 
@@ -943,11 +950,11 @@ When a screen is created via admin, seat templates are automatically generated:
 private int generateSeatsForScreen(Screen screen, int totalSeats) {
     int seatsPerRow = 10;
     int totalRows = (int) Math.ceil((double) totalSeats / seatsPerRow);
-    
+
     List<Seat> seats = new ArrayList<>();
     for (int row = 0; row < totalRows; row++) {
         char rowName = (char) ('A' + row);
-        
+
         // Seat type based on row position
         SeatType seatType;
         if (row < 2) {
@@ -957,7 +964,7 @@ private int generateSeatsForScreen(Screen screen, int totalSeats) {
         } else {
             seatType = SeatType.RECLINER;     // Back rows
         }
-        
+
         for (int col = 1; col <= seatsPerRow; col++) {
             seats.add(Seat.builder()
                 .screen(screen)
@@ -978,23 +985,23 @@ private int generateSeatsForScreen(Screen screen, int totalSeats) {
 When a show is scheduled, `show_seats` records are created from the seat template:
 
 ```java
-private int generateShowSeats(Show show, BigDecimal basePrice, 
+private int generateShowSeats(Show show, BigDecimal basePrice,
                               BigDecimal premiumPrice, BigDecimal reclinerPrice) {
     List<Seat> seats = seatRepository.findByScreenIdAndIsActiveTrueOrderByRowNameAscColumnNumberAsc(
         show.getScreen().getId());
-    
+
     List<ShowSeat> showSeats = new ArrayList<>();
     for (Seat seat : seats) {
         BigDecimal price = switch (seat.getSeatType()) {
-            case RECLINER -> reclinerPrice != null ? reclinerPrice 
+            case RECLINER -> reclinerPrice != null ? reclinerPrice
                            : basePrice.multiply(BigDecimal.valueOf(2.5));
-            case PREMIUM -> premiumPrice != null ? premiumPrice 
+            case PREMIUM -> premiumPrice != null ? premiumPrice
                           : basePrice.multiply(BigDecimal.valueOf(1.5));
-            case VIP -> reclinerPrice != null ? reclinerPrice 
+            case VIP -> reclinerPrice != null ? reclinerPrice
                       : basePrice.multiply(BigDecimal.valueOf(3.0));
             default -> basePrice;
         };
-        
+
         showSeats.add(ShowSeat.builder()
             .showId(show.getId())
             .seatId(seat.getId())
@@ -1009,28 +1016,28 @@ private int generateShowSeats(Show show, BigDecimal basePrice,
 
 ### 7.3 Admin API Endpoints
 
-| Service | Method | Endpoint | Description |
-|---------|--------|----------|-------------|
-| Movie | GET | `/api/admin/dashboard/stats` | Dashboard statistics |
-| Movie | GET | `/api/admin/movies` | Paginated movie list |
-| Movie | POST | `/api/admin/movies` | Create movie |
-| Movie | PUT | `/api/admin/movies/{id}` | Update movie |
-| Movie | DELETE | `/api/admin/movies/{id}` | Soft delete movie |
-| Movie | PATCH | `/api/admin/movies/{id}/toggle-active` | Toggle active status |
-| Movie | GET | `/api/admin/shows` | Paginated show list |
-| Movie | POST | `/api/admin/shows` | Create show + generate seats |
-| Movie | DELETE | `/api/admin/shows/{id}` | Delete show + seats |
-| Movie | GET | `/api/admin/theaters` | All theaters |
-| Movie | POST | `/api/admin/theaters` | Create theater |
-| Movie | GET | `/api/admin/theaters/{id}/screens` | Screens for theater |
-| Movie | POST | `/api/admin/theaters/screens` | Create screen + seats |
-| Movie | GET | `/api/admin/theaters/cities` | All cities |
-| Movie | GET | `/api/admin/cache/status` | Cache status |
-| Movie | DELETE | `/api/admin/cache/{name}` | Clear specific cache |
-| Movie | DELETE | `/api/admin/cache` | Clear all caches |
-| Booking | GET | `/api/admin/bookings` | Paginated booking list |
-| Booking | GET | `/api/admin/bookings/stats` | Booking statistics |
-| Booking | POST | `/api/admin/bookings/{id}/cancel` | Admin cancel |
+| Service | Method | Endpoint                               | Description                  |
+| ------- | ------ | -------------------------------------- | ---------------------------- |
+| Movie   | GET    | `/api/admin/dashboard/stats`           | Dashboard statistics         |
+| Movie   | GET    | `/api/admin/movies`                    | Paginated movie list         |
+| Movie   | POST   | `/api/admin/movies`                    | Create movie                 |
+| Movie   | PUT    | `/api/admin/movies/{id}`               | Update movie                 |
+| Movie   | DELETE | `/api/admin/movies/{id}`               | Soft delete movie            |
+| Movie   | PATCH  | `/api/admin/movies/{id}/toggle-active` | Toggle active status         |
+| Movie   | GET    | `/api/admin/shows`                     | Paginated show list          |
+| Movie   | POST   | `/api/admin/shows`                     | Create show + generate seats |
+| Movie   | DELETE | `/api/admin/shows/{id}`                | Delete show + seats          |
+| Movie   | GET    | `/api/admin/theaters`                  | All theaters                 |
+| Movie   | POST   | `/api/admin/theaters`                  | Create theater               |
+| Movie   | GET    | `/api/admin/theaters/{id}/screens`     | Screens for theater          |
+| Movie   | POST   | `/api/admin/theaters/screens`          | Create screen + seats        |
+| Movie   | GET    | `/api/admin/theaters/cities`           | All cities                   |
+| Movie   | GET    | `/api/admin/cache/status`              | Cache status                 |
+| Movie   | DELETE | `/api/admin/cache/{name}`              | Clear specific cache         |
+| Movie   | DELETE | `/api/admin/cache`                     | Clear all caches             |
+| Booking | GET    | `/api/admin/bookings`                  | Paginated booking list       |
+| Booking | GET    | `/api/admin/bookings/stats`            | Booking statistics           |
+| Booking | POST   | `/api/admin/bookings/{id}/cancel`      | Admin cancel                 |
 
 ---
 
@@ -1095,8 +1102,8 @@ public ProducerFactory<String, String> producerFactory() {
   "showId": "660e8400-e29b-41d4-a716-446655440000",
   "guestName": "John Doe",
   "guestEmail": "john@example.com",
-  "totalAmount": 1500.00,
-  "finalAmount": 1567.50,
+  "totalAmount": 1500.0,
+  "finalAmount": 1567.5,
   "seatCount": 3
 }
 ```
@@ -1154,7 +1161,7 @@ public void generateAllLayouts() {
 
 public void generateLayoutForScreen(UUID screenId) {
     List<Seat> seats = seatRepository.findByScreenIdAndIsActiveTrueOrderByRowNameAscColumnNumberAsc(screenId);
-    
+
     // Group by row
     Map<String, List<SeatDTO>> rowMap = seats.stream()
         .collect(Collectors.groupingBy(
@@ -1162,7 +1169,7 @@ public void generateLayoutForScreen(UUID screenId) {
             LinkedHashMap::new,
             Collectors.mapping(this::toSeatDTO, Collectors.toList())
         ));
-    
+
     LayoutDTO layout = LayoutDTO.builder()
         .screenId(screenId)
         .screenName(screen.getName())
@@ -1172,7 +1179,7 @@ public void generateLayoutForScreen(UUID screenId) {
             .map(e -> RowDTO.builder().rowName(e.getKey()).seats(e.getValue()).build())
             .toList())
         .build();
-    
+
     // Write to file
     Path path = layoutPath.resolve("screen-" + screenId + ".json");
     objectMapper.writeValue(path.toFile(), layout);
@@ -1238,16 +1245,16 @@ public void generateLayoutForScreen(UUID screenId) {
 
 ### 10.1 Horizontal Scaling Strategy
 
-| Component | Stateless? | Scaling Strategy | Notes |
-|-----------|------------|------------------|-------|
-| Frontend | ✅ Yes | Scale freely | SSR pages, no session |
-| API Gateway | ✅ Yes | Scale freely | Stateless routing |
-| Movie Service | ✅ Yes | Scale freely | Read-heavy, cache-backed |
-| Booking Service | ✅ Yes | Scale with Redis | State in Redis/DB |
-| Notification Service | ✅ Yes | Scale consumers | Kafka partition assignment |
-| PostgreSQL | ❌ No | Read replicas | Single primary for writes |
-| Redis | ❌ No | Redis Cluster | Sharding + HA |
-| Kafka | ❌ No | Add partitions | Horizontal throughput |
+| Component            | Stateless? | Scaling Strategy | Notes                      |
+| -------------------- | ---------- | ---------------- | -------------------------- |
+| Frontend             | ✅ Yes     | Scale freely     | SSR pages, no session      |
+| API Gateway          | ✅ Yes     | Scale freely     | Stateless routing          |
+| Movie Service        | ✅ Yes     | Scale freely     | Read-heavy, cache-backed   |
+| Booking Service      | ✅ Yes     | Scale with Redis | State in Redis/DB          |
+| Notification Service | ✅ Yes     | Scale consumers  | Kafka partition assignment |
+| PostgreSQL           | ❌ No      | Read replicas    | Single primary for writes  |
+| Redis                | ❌ No      | Redis Cluster    | Sharding + HA              |
+| Kafka                | ❌ No      | Add partitions   | Horizontal throughput      |
 
 ### 10.2 Bottleneck Analysis
 
@@ -1324,13 +1331,13 @@ public void generateLayoutForScreen(UUID screenId) {
 
 ### 10.4 Data Volume Projections
 
-| Entity | Current | Daily Growth | Monthly | Yearly | Strategy |
-|--------|---------|--------------|---------|--------|----------|
-| show_seats | 188K | +27K | +810K | ~10M | Partition by date, archive |
-| bookings | 25 | +100 | +3K | ~36K | Index optimization |
-| shows | 1,470 | +210 | +6.3K | ~75K | Deactivate old shows |
-| movies | 30 | +2 | +60 | ~720 | Active/inactive flag |
-| seats | 2,275 | — | — | — | Static template |
+| Entity     | Current | Daily Growth | Monthly | Yearly | Strategy                   |
+| ---------- | ------- | ------------ | ------- | ------ | -------------------------- |
+| show_seats | 188K    | +27K         | +810K   | ~10M   | Partition by date, archive |
+| bookings   | 25      | +100         | +3K     | ~36K   | Index optimization         |
+| shows      | 1,470   | +210         | +6.3K   | ~75K   | Deactivate old shows       |
+| movies     | 30      | +2           | +60     | ~720   | Active/inactive flag       |
+| seats      | 2,275   | —            | —       | —      | Static template            |
 
 ---
 
@@ -1339,7 +1346,7 @@ public void generateLayoutForScreen(UUID screenId) {
 ### 11.1 Docker Compose (Development)
 
 ```yaml
-version: '3.8'
+version: "3.8"
 services:
   postgres:
     image: postgres:15-alpine
@@ -1467,29 +1474,29 @@ All services expose `/actuator/prometheus`:
 ```yaml
 # prometheus.yml
 scrape_configs:
-  - job_name: 'api-gateway'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "api-gateway"
+    metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ['api-gateway:8080']
+      - targets: ["api-gateway:8080"]
 
-  - job_name: 'movie-service'
+  - job_name: "movie-service"
     static_configs:
-      - targets: ['movie-service:8085']
+      - targets: ["movie-service:8085"]
 
-  - job_name: 'booking-service'
+  - job_name: "booking-service"
     static_configs:
-      - targets: ['booking-service:8083']
+      - targets: ["booking-service:8083"]
 ```
 
 **Key Metrics:**
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `http_server_requests_seconds` | Histogram | Request latency |
-| `hikaricp_connections_active` | Gauge | Active DB connections |
-| `redis_commands_duration_seconds` | Histogram | Redis operation latency |
-| `kafka_producer_record_send_total` | Counter | Kafka messages sent |
-| `jvm_memory_used_bytes` | Gauge | JVM heap usage |
+| Metric                             | Type      | Description             |
+| ---------------------------------- | --------- | ----------------------- |
+| `http_server_requests_seconds`     | Histogram | Request latency         |
+| `hikaricp_connections_active`      | Gauge     | Active DB connections   |
+| `redis_commands_duration_seconds`  | Histogram | Redis operation latency |
+| `kafka_producer_record_send_total` | Counter   | Kafka messages sent     |
+| `jvm_memory_used_bytes`            | Gauge     | JVM heap usage          |
 
 ### 12.2 Distributed Tracing (Jaeger)
 
@@ -1541,20 +1548,20 @@ List<ShowSeatDTO> findSeatsWithLayoutByShowId(@Param("showId") UUID showId);
 
 ### 13.2 Connection Pool Settings
 
-| Service | DB Pool Max | DB Pool Min | Redis Pool Max |
-|---------|-------------|-------------|----------------|
-| Booking Service | 20 | 5 | 10 |
-| Movie Service | 20 | 5 | 10 |
-| Notification | 10 | 3 | — |
+| Service         | DB Pool Max | DB Pool Min | Redis Pool Max |
+| --------------- | ----------- | ----------- | -------------- |
+| Booking Service | 20          | 5           | 10             |
+| Movie Service   | 20          | 5           | 10             |
+| Notification    | 10          | 3           | —              |
 
 ### 13.3 Cache Hit Rates
 
-| Cache | Expected Hit Rate | Strategy |
-|-------|-------------------|----------|
-| `movies` | >95% | Long TTL (1h), evict on update |
-| `cities` | >99% | Very long TTL (24h), rarely changes |
-| `theaters` | >90% | Medium TTL (6h) |
-| `show_seats` | ~70% | Short TTL (5m), write-through |
+| Cache        | Expected Hit Rate | Strategy                            |
+| ------------ | ----------------- | ----------------------------------- |
+| `movies`     | >95%              | Long TTL (1h), evict on update      |
+| `cities`     | >99%              | Very long TTL (24h), rarely changes |
+| `theaters`   | >90%              | Medium TTL (6h)                     |
+| `show_seats` | ~70%              | Short TTL (5m), write-through       |
 
 ---
 
@@ -1562,24 +1569,24 @@ List<ShowSeatDTO> findSeatsWithLayoutByShowId(@Param("showId") UUID showId);
 
 ### 14.1 Current Model (Guest Booking)
 
-| Layer | Security Posture |
-|-------|-----------------|
-| API Gateway | Pass-through (no auth) |
-| Backend Services | `permitAll()` on all endpoints |
-| Database | No users table; guest info per booking |
-| Frontend | No login; city selection only |
-| Booking Identity | Booking number (`BMS-XXXXXXXX`) |
+| Layer            | Security Posture                       |
+| ---------------- | -------------------------------------- |
+| API Gateway      | Pass-through (no auth)                 |
+| Backend Services | `permitAll()` on all endpoints         |
+| Database         | No users table; guest info per booking |
+| Frontend         | No login; city selection only          |
+| Booking Identity | Booking number (`BMS-XXXXXXXX`)        |
 
 ### 14.2 Security Measures
 
-| Measure | Implementation |
-|---------|---------------|
-| CSRF | Disabled (stateless API) |
-| Sessions | `STATELESS` |
-| Lock Token | UUID validated against Redis |
-| Input Validation | `@Valid` + Bean Validation |
-| SQL Injection | JPA parameterized queries |
-| Seat Limit | Max 10 seats (server-side) |
+| Measure          | Implementation               |
+| ---------------- | ---------------------------- |
+| CSRF             | Disabled (stateless API)     |
+| Sessions         | `STATELESS`                  |
+| Lock Token       | UUID validated against Redis |
+| Input Validation | `@Valid` + Bean Validation   |
+| SQL Injection    | JPA parameterized queries    |
+| Seat Limit       | Max 10 seats (server-side)   |
 
 ---
 
@@ -1587,78 +1594,78 @@ List<ShowSeatDTO> findSeatsWithLayoutByShowId(@Param("showId") UUID showId);
 
 ### 15.1 Seat Lock Timing
 
-| Parameter | Value | Config Key |
-|-----------|-------|------------|
-| Lock timeout | 8 min | `booking.seat-lock.timeout-minutes` |
-| Distributed lock wait | 5 sec | `booking.seat-lock.distributed-lock-wait-seconds` |
+| Parameter              | Value  | Config Key                                         |
+| ---------------------- | ------ | -------------------------------------------------- |
+| Lock timeout           | 8 min  | `booking.seat-lock.timeout-minutes`                |
+| Distributed lock wait  | 5 sec  | `booking.seat-lock.distributed-lock-wait-seconds`  |
 | Distributed lock lease | 10 sec | `booking.seat-lock.distributed-lock-lease-seconds` |
-| Lock expiry job | 60 sec | `@Scheduled(fixedRate = 60000)` |
-| Max seats per booking | 10 | Hardcoded |
-| Convenience fee | 4.5% | Hardcoded |
+| Lock expiry job        | 60 sec | `@Scheduled(fixedRate = 60000)`                    |
+| Max seats per booking  | 10     | Hardcoded                                          |
+| Convenience fee        | 4.5%   | Hardcoded                                          |
 
 ### 15.2 Cache TTLs
 
-| Cache | TTL | Rationale |
-|-------|-----|-----------|
-| `movies` | 1 hour | Movie details change rarely |
-| `movies-list` | 10 min | New movies added periodically |
-| `movies-by-city` | 10 min | Shows change by city |
-| `featured-movies` | 15 min | Editorial curation |
-| `cities` | 24 hours | Very static data |
-| `theaters` | 6 hours | Theaters rarely change |
-| `shows` | 5 min | Show times are time-sensitive |
-| `shows-by-movie` | 5 min | Same as above |
-| `show_seats` | 5 min | Seat status changes frequently |
+| Cache             | TTL      | Rationale                      |
+| ----------------- | -------- | ------------------------------ |
+| `movies`          | 1 hour   | Movie details change rarely    |
+| `movies-list`     | 10 min   | New movies added periodically  |
+| `movies-by-city`  | 10 min   | Shows change by city           |
+| `featured-movies` | 15 min   | Editorial curation             |
+| `cities`          | 24 hours | Very static data               |
+| `theaters`        | 6 hours  | Theaters rarely change         |
+| `shows`           | 5 min    | Show times are time-sensitive  |
+| `shows-by-movie`  | 5 min    | Same as above                  |
+| `show_seats`      | 5 min    | Seat status changes frequently |
 
 ### 15.3 Service Ports
 
-| Service | Port | Protocol |
-|---------|------|----------|
-| Frontend | 3000 | HTTP |
-| API Gateway | 8080 | HTTP |
-| Booking Service | 8083 | HTTP |
-| Movie Service | 8085 | HTTP |
-| Notification Service | 8086 | HTTP |
-| PostgreSQL | 5432 | TCP |
-| Redis | 6379 | TCP |
-| Kafka | 9092 | TCP |
-| Prometheus | 9090 | HTTP |
-| Grafana | 3001 | HTTP |
-| Jaeger UI | 16686 | HTTP |
+| Service              | Port  | Protocol |
+| -------------------- | ----- | -------- |
+| Frontend             | 3000  | HTTP     |
+| API Gateway          | 8080  | HTTP     |
+| Booking Service      | 8083  | HTTP     |
+| Movie Service        | 8085  | HTTP     |
+| Notification Service | 8086  | HTTP     |
+| PostgreSQL           | 5432  | TCP      |
+| Redis                | 6379  | TCP      |
+| Kafka                | 9092  | TCP      |
+| Prometheus           | 9090  | HTTP     |
+| Grafana              | 3001  | HTTP     |
+| Jaeger UI            | 16686 | HTTP     |
 
 ---
 
 ## Appendix A: Key Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| Guest booking (no auth) | Reduces friction; MVP focus on booking flow |
-| Separate `seats` / `show_seats` | Template pattern: layout fixed, status varies per show |
-| Redisson over SETNX | Reentrant locks, auto-renewal, fairness |
-| Kafka over REST | Decouples services; async notification |
-| Optimistic locking | Better throughput under low contention |
-| 8-minute lock timeout | Balance: long enough to fill form, short enough to not block |
-| Booking number format | Human-readable for guest reference |
-| Snapshot in `booking_seats` | Preserves booking details if layout changes |
-| Single DB, multiple services | Simplicity for MVP; can split later |
-| Write-through cache | Ensures cache consistency with DB |
-| CDN-decoupled layouts | Reduces backend load for popular shows |
+| Decision                        | Rationale                                                    |
+| ------------------------------- | ------------------------------------------------------------ |
+| Guest booking (no auth)         | Reduces friction; MVP focus on booking flow                  |
+| Separate `seats` / `show_seats` | Template pattern: layout fixed, status varies per show       |
+| Redisson over SETNX             | Reentrant locks, auto-renewal, fairness                      |
+| Kafka over REST                 | Decouples services; async notification                       |
+| Optimistic locking              | Better throughput under low contention                       |
+| 8-minute lock timeout           | Balance: long enough to fill form, short enough to not block |
+| Booking number format           | Human-readable for guest reference                           |
+| Snapshot in `booking_seats`     | Preserves booking details if layout changes                  |
+| Single DB, multiple services    | Simplicity for MVP; can split later                          |
+| Write-through cache             | Ensures cache consistency with DB                            |
+| CDN-decoupled layouts           | Reduces backend load for popular shows                       |
 
 ---
 
 ## Appendix B: API Error Codes
 
-| Error Code | HTTP Status | Description |
-|------------|-------------|-------------|
-| `SEAT_UNAVAILABLE` | 409 | Requested seats not available |
-| `INVALID_LOCK_TOKEN` | 403 | Lock token mismatch |
-| `BOOKING_EXPIRED` | 410 | Lock timeout exceeded |
-| `VALIDATION_ERROR` | 400 | Input validation failed |
-| `RESOURCE_NOT_FOUND` | 404 | Entity not found |
-| `CONFLICT` | 409 | Optimistic lock failure |
-| `INTERNAL_ERROR` | 500 | Unexpected server error |
+| Error Code           | HTTP Status | Description                   |
+| -------------------- | ----------- | ----------------------------- |
+| `SEAT_UNAVAILABLE`   | 409         | Requested seats not available |
+| `INVALID_LOCK_TOKEN` | 403         | Lock token mismatch           |
+| `BOOKING_EXPIRED`    | 410         | Lock timeout exceeded         |
+| `VALIDATION_ERROR`   | 400         | Input validation failed       |
+| `RESOURCE_NOT_FOUND` | 404         | Entity not found              |
+| `CONFLICT`           | 409         | Optimistic lock failure       |
+| `INTERNAL_ERROR`     | 500         | Unexpected server error       |
 
 ---
 
-*Document Version: 1.0.0*  
-*Last Updated: February 11, 2026*
+_Document Version: 1.0.0_  
+_Last Updated: February 11, 2026_
