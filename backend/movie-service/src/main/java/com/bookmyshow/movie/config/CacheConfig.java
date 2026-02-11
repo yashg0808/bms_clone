@@ -42,9 +42,13 @@ public class CacheConfig extends CachingConfigurerSupport {
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
         cacheConfigurations.put("movies", defaultConfig.entryTtl(Duration.ofHours(1)));
+        cacheConfigurations.put("movies-list", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put("movies-by-city", defaultConfig.entryTtl(Duration.ofMinutes(10)));
         cacheConfigurations.put("featured-movies", defaultConfig.entryTtl(Duration.ofMinutes(15)));
         cacheConfigurations.put("cities", defaultConfig.entryTtl(Duration.ofHours(24)));
         cacheConfigurations.put("theaters", defaultConfig.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put("shows", defaultConfig.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put("shows-by-movie", defaultConfig.entryTtl(Duration.ofMinutes(5)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)

@@ -7,85 +7,85 @@
     "type" : "RECLINER",
     "rows" : {
       "A" : [ {
-        "number" : "A1",
         "seatId" : "2f65a090-c7a5-4d7a-b2c4-3229c26e7ec7",
+        "number" : "A1",
         "column" : 1
       }, {
-        "number" : "A2",
         "seatId" : "a4c02431-1d7e-44fa-9ab3-b0e911db66f6",
+        "number" : "A2",
         "column" : 2
       }, {
-        "number" : "A3",
         "seatId" : "dc5429fa-81ca-4586-8209-520a3f2be436",
+        "number" : "A3",
         "column" : 3
       }, {
-        "number" : "A4",
         "seatId" : "a9e3e236-c026-48ad-b36b-4a150601fe73",
+        "number" : "A4",
         "column" : 4
       }, {
-        "number" : "A5",
         "seatId" : "9eb6396d-81a7-4dbb-ae87-eab3556af6e4",
+        "number" : "A5",
         "column" : 5
       }, {
-        "number" : "A6",
         "seatId" : "cf2956d9-9525-42f5-8fe7-4c3f7bb2c8f3",
+        "number" : "A6",
         "column" : 6
       }, {
-        "number" : "A7",
         "seatId" : "a8614e28-fd99-4b1f-bb43-26c147cbb2ec",
+        "number" : "A7",
         "column" : 7
       }, {
-        "number" : "A8",
         "seatId" : "b3fa9a3e-8a87-4ae8-8d3e-bb86918c9e5c",
+        "number" : "A8",
         "column" : 8
       }, {
-        "number" : "A9",
         "seatId" : "0c861e1a-eae8-4c42-ba13-7599d2252f73",
+        "number" : "A9",
         "column" : 9
       }, {
-        "number" : "A10",
         "seatId" : "7e74ea27-6c16-42c3-81e1-21f0d2b2c1af",
+        "number" : "A10",
         "column" : 10
       } ],
       "B" : [ {
-        "number" : "B1",
         "seatId" : "b052cc5d-e9d5-4007-b7f6-1a4288bbedbc",
+        "number" : "B1",
         "column" : 1
       }, {
-        "number" : "B2",
         "seatId" : "46c40bb5-32e0-464f-a404-cc4633b0040e",
+        "number" : "B2",
         "column" : 2
       }, {
-        "number" : "B3",
         "seatId" : "83a7fec0-cb49-43ce-9a35-e492dc63999e",
+        "number" : "B3",
         "column" : 3
       }, {
-        "number" : "B4",
         "seatId" : "f78b9110-2c37-4775-a34c-d43bc1d4a04a",
+        "number" : "B4",
         "column" : 4
       }, {
-        "number" : "B5",
         "seatId" : "b5199ec7-75ff-4dda-ba00-c6d95c4f9eb5",
+        "number" : "B5",
         "column" : 5
       }, {
-        "number" : "B6",
         "seatId" : "85a4fc3e-3116-4c16-a6ad-29b9039b78cd",
+        "number" : "B6",
         "column" : 6
       }, {
-        "number" : "B7",
         "seatId" : "fed376b9-11df-4052-b021-6a7c18c2192b",
+        "number" : "B7",
         "column" : 7
       }, {
-        "number" : "B8",
         "seatId" : "b86f7242-7c96-450d-83e7-c4752c4ff2d2",
+        "number" : "B8",
         "column" : 8
       }, {
-        "number" : "B9",
         "seatId" : "9d18839b-d9da-498d-ad9f-e52637c938b4",
+        "number" : "B9",
         "column" : 9
       }, {
-        "number" : "B10",
         "seatId" : "f4c185c0-02b6-4965-a23e-529efce0e8d5",
+        "number" : "B10",
         "column" : 10
       } ]
     }
@@ -93,167 +93,167 @@
     "type" : "PREMIUM",
     "rows" : {
       "C" : [ {
-        "number" : "C1",
         "seatId" : "30df9605-95fa-48cd-a57f-169e96b0a313",
+        "number" : "C1",
         "column" : 1
       }, {
-        "number" : "C2",
         "seatId" : "3212a8ad-8e6e-4a78-8d73-0d01e88375fe",
+        "number" : "C2",
         "column" : 2
       }, {
-        "number" : "C3",
         "seatId" : "7f683edd-9b11-4e09-b9f6-9821cc1d40e5",
+        "number" : "C3",
         "column" : 3
       }, {
-        "number" : "C4",
         "seatId" : "666d3e96-5d78-4c98-9fcf-87e26bd44f16",
+        "number" : "C4",
         "column" : 4
       }, {
-        "number" : "C5",
         "seatId" : "152584cb-d10a-428b-8368-f69d7d1f114b",
+        "number" : "C5",
         "column" : 5
       }, {
-        "number" : "C6",
         "seatId" : "21e8c202-f572-4f1c-8aca-59dfe1438098",
+        "number" : "C6",
         "column" : 6
       }, {
-        "number" : "C7",
         "seatId" : "e5c82a06-9985-42c3-8f1c-0225ab774196",
+        "number" : "C7",
         "column" : 7
       }, {
-        "number" : "C8",
         "seatId" : "fc8c20df-7352-4af9-840f-6d8fc01e0011",
+        "number" : "C8",
         "column" : 8
       }, {
-        "number" : "C9",
         "seatId" : "407d01e8-2089-4e89-9e4b-edaa3bb01ce6",
+        "number" : "C9",
         "column" : 9
       }, {
-        "number" : "C10",
         "seatId" : "1589164a-0854-405d-b547-8df0153fe8fa",
+        "number" : "C10",
         "column" : 10
       } ],
       "D" : [ {
-        "number" : "D1",
         "seatId" : "117b4a9b-3f34-4291-8379-96e5cc02243e",
+        "number" : "D1",
         "column" : 1
       }, {
-        "number" : "D2",
         "seatId" : "efa05946-abc3-4473-a5bf-9c1e9a48ce57",
+        "number" : "D2",
         "column" : 2
       }, {
-        "number" : "D3",
         "seatId" : "00c87aac-8c3b-45d2-9705-63b5cc80eeee",
+        "number" : "D3",
         "column" : 3
       }, {
-        "number" : "D4",
         "seatId" : "19d216d4-9739-4c6b-88ec-5c06f78c3bfc",
+        "number" : "D4",
         "column" : 4
       }, {
-        "number" : "D5",
         "seatId" : "f3fe248e-8722-4704-9e13-c358fa592eef",
+        "number" : "D5",
         "column" : 5
       }, {
-        "number" : "D6",
         "seatId" : "090f725d-74d4-4578-b33f-c0356c686d9f",
+        "number" : "D6",
         "column" : 6
       }, {
-        "number" : "D7",
         "seatId" : "309cdbdf-48c7-41e7-94cc-6fccdb14e434",
+        "number" : "D7",
         "column" : 7
       }, {
-        "number" : "D8",
         "seatId" : "9d7e985b-e59a-432f-a580-58d04d4a4edb",
+        "number" : "D8",
         "column" : 8
       }, {
-        "number" : "D9",
         "seatId" : "71c3a2cc-489f-48bf-adad-56d8e1d3ec83",
+        "number" : "D9",
         "column" : 9
       }, {
-        "number" : "D10",
         "seatId" : "097e4224-92ed-4824-a809-16388cb41bb3",
+        "number" : "D10",
         "column" : 10
       } ],
       "E" : [ {
-        "number" : "E1",
         "seatId" : "fa84c4de-68b1-4fae-90f0-d8418ef36111",
+        "number" : "E1",
         "column" : 1
       }, {
-        "number" : "E2",
         "seatId" : "398ada42-413d-4ab4-afa4-78cd9d3f51c8",
+        "number" : "E2",
         "column" : 2
       }, {
-        "number" : "E3",
         "seatId" : "368eff39-6e5b-454d-88b5-213c2f13928a",
+        "number" : "E3",
         "column" : 3
       }, {
-        "number" : "E4",
         "seatId" : "3daadfc7-8083-453a-9aca-ffe9d5d63387",
+        "number" : "E4",
         "column" : 4
       }, {
-        "number" : "E5",
         "seatId" : "baf4d67d-3a52-4c40-a6f7-9d6a1fe4de0e",
+        "number" : "E5",
         "column" : 5
       }, {
-        "number" : "E6",
         "seatId" : "5d5dcd61-127a-4f19-af96-7fbf913de7a2",
+        "number" : "E6",
         "column" : 6
       }, {
-        "number" : "E7",
         "seatId" : "343f9b76-fd77-4fb9-8927-5602a5898759",
+        "number" : "E7",
         "column" : 7
       }, {
-        "number" : "E8",
         "seatId" : "dddae942-d6d8-4af8-91ed-c7590250e164",
+        "number" : "E8",
         "column" : 8
       }, {
-        "number" : "E9",
         "seatId" : "edeea943-d467-4209-9582-c2dece0398ca",
+        "number" : "E9",
         "column" : 9
       }, {
-        "number" : "E10",
         "seatId" : "685c4c4d-185d-4919-b2e8-63611e445ab9",
+        "number" : "E10",
         "column" : 10
       } ],
       "F" : [ {
-        "number" : "F1",
         "seatId" : "0077ec42-17c2-437a-8e13-8bcd94864574",
+        "number" : "F1",
         "column" : 1
       }, {
-        "number" : "F2",
         "seatId" : "d4a91ddb-3ddb-404a-a173-47db0e012fa6",
+        "number" : "F2",
         "column" : 2
       }, {
-        "number" : "F3",
         "seatId" : "f8be8423-bb40-4083-b349-3023d32ee69f",
+        "number" : "F3",
         "column" : 3
       }, {
-        "number" : "F4",
         "seatId" : "7a146828-100d-4f03-8424-1e4610628cd9",
+        "number" : "F4",
         "column" : 4
       }, {
-        "number" : "F5",
         "seatId" : "0456d333-49f9-4313-adae-4bdb72fabd45",
+        "number" : "F5",
         "column" : 5
       }, {
-        "number" : "F6",
         "seatId" : "e642171a-4e95-4147-b659-e678ddab0af0",
+        "number" : "F6",
         "column" : 6
       }, {
-        "number" : "F7",
         "seatId" : "66c6dd17-a266-4869-973a-26c345515126",
+        "number" : "F7",
         "column" : 7
       }, {
-        "number" : "F8",
         "seatId" : "7f9d6c96-591b-4190-9ac7-7e6de5e3f92d",
+        "number" : "F8",
         "column" : 8
       }, {
-        "number" : "F9",
         "seatId" : "919f95b7-9594-4043-95b2-3deab640d540",
+        "number" : "F9",
         "column" : 9
       }, {
-        "number" : "F10",
         "seatId" : "35f8ccd7-46ce-4a64-b8b7-68518847eb44",
+        "number" : "F10",
         "column" : 10
       } ]
     }

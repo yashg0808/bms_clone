@@ -7,6 +7,7 @@ import com.bookmyshow.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -28,6 +29,7 @@ public class ShowService {
     /**
      * Get shows for a movie on a specific date.
      */
+    @Cacheable(value = "shows-by-movie", key = "#movieId + ':' + #date")
     public List<ShowResponse> getShowsByMovieAndDate(UUID movieId, LocalDate date) {
         return showRepository.findByMovieIdAndShowDate(movieId, date)
                 .stream()
@@ -38,6 +40,7 @@ public class ShowService {
     /**
      * Get shows for a movie in a specific city on a date.
      */
+    @Cacheable(value = "shows-by-movie", key = "#movieId + ':' + #cityId + ':' + #date")
     public List<ShowResponse> getShowsByMovieCityAndDate(UUID movieId, UUID cityId, LocalDate date) {
         return showRepository.findByMovieCityAndDate(movieId, cityId, date)
                 .stream()
@@ -47,7 +50,9 @@ public class ShowService {
 
     /**
      * Get a show by ID.
+     * Cached for 5 minutes — called frequently from seat selection page.
      */
+    @Cacheable(value = "shows", key = "#showId")
     public ShowResponse getShowById(UUID showId) {
         Show show = showRepository.findById(showId)
                 .orElseThrow(() -> new ResourceNotFoundException("Show", "id", showId));

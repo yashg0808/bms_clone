@@ -1,6 +1,7 @@
 package com.bookmyshow.movie.service;
 
 import com.bookmyshow.movie.dto.MovieResponse;
+import com.bookmyshow.movie.dto.PagedResponse;
 import com.bookmyshow.movie.model.Movie;
 import com.bookmyshow.movie.repository.MovieRepository;
 import com.bookmyshow.shared.exception.ResourceNotFoundException;
@@ -32,11 +33,14 @@ public class MovieService {
 
     /**
      * Get all active movies with pagination.
+     * Cached for 10 minutes to reduce DB load on homepage.
      */
-    public Page<MovieResponse> getMovies(int page, int size) {
+    @Cacheable(value = "movies-list", key = "'page:' + #page + ':size:' + #size")
+    public PagedResponse<MovieResponse> getMovies(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("releaseDate").descending());
-        return movieRepository.findByIsActiveTrue(pageable)
+        Page<MovieResponse> pageResult = movieRepository.findByIsActiveTrue(pageable)
                 .map(this::mapToResponse);
+        return toPagedResponse(pageResult);
     }
 
     /**
@@ -51,20 +55,25 @@ public class MovieService {
 
     /**
      * Get movies showing in a specific city.
+     * Cached for 10 minutes per city.
      */
-    public Page<MovieResponse> getMoviesByCity(UUID cityId, int page, int size) {
+    @Cacheable(value = "movies-by-city", key = "#cityId + ':page:' + #page + ':size:' + #size")
+    public PagedResponse<MovieResponse> getMoviesByCity(UUID cityId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return movieRepository.findMoviesByCity(cityId, LocalDate.now(), pageable)
+        Page<MovieResponse> pageResult = movieRepository.findMoviesByCity(cityId, LocalDate.now(), pageable)
                 .map(this::mapToResponse);
+        return toPagedResponse(pageResult);
     }
 
     /**
      * Search movies by title.
+     * Not cached since search queries are highly variable.
      */
-    public Page<MovieResponse> searchMovies(String query, int page, int size) {
+    public PagedResponse<MovieResponse> searchMovies(String query, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return movieRepository.searchByTitle(query, pageable)
+        Page<MovieResponse> pageResult = movieRepository.searchByTitle(query, pageable)
                 .map(this::mapToResponse);
+        return toPagedResponse(pageResult);
     }
 
     /**
@@ -76,6 +85,21 @@ public class MovieService {
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert Spring Data Page to cache-friendly PagedResponse.
+     */
+    private <T> PagedResponse<T> toPagedResponse(Page<T> page) {
+        return PagedResponse.<T>builder()
+                .content(page.getContent())
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .build();
     }
 
     private MovieResponse mapToResponse(Movie movie) {

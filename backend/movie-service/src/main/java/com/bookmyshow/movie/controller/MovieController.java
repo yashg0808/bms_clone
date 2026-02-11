@@ -1,12 +1,12 @@
 package com.bookmyshow.movie.controller;
 
 import com.bookmyshow.movie.dto.MovieResponse;
+import com.bookmyshow.movie.dto.PagedResponse;
 import com.bookmyshow.movie.dto.ShowResponse;
 import com.bookmyshow.movie.service.MovieService;
 import com.bookmyshow.movie.service.ShowService;
 import com.bookmyshow.shared.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,7 +30,7 @@ public class MovieController {
      * Get all active movies with pagination.
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<MovieResponse>>> getMovies(
+    public ResponseEntity<ApiResponse<PagedResponse<MovieResponse>>> getMovies(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success(movieService.getMovies(page, size)));
@@ -48,7 +48,7 @@ public class MovieController {
      * Get movies playing in a specific city.
      */
     @GetMapping("/city/{cityId}")
-    public ResponseEntity<ApiResponse<Page<MovieResponse>>> getMoviesByCity(
+    public ResponseEntity<ApiResponse<PagedResponse<MovieResponse>>> getMoviesByCity(
             @PathVariable UUID cityId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -59,7 +59,7 @@ public class MovieController {
      * Search movies by title.
      */
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Page<MovieResponse>>> searchMovies(
+    public ResponseEntity<ApiResponse<PagedResponse<MovieResponse>>> searchMovies(
             @RequestParam String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
