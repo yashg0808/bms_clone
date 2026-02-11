@@ -99,4 +99,77 @@ export const bookingApi = {
     apiClient.get(`/api/v1/bookings/number/${bookingNumber}`),
 };
 
+// ---- Admin API ----
+export const adminApi = {
+  // Dashboard
+  getDashboardStats: () => apiClient.get("/api/admin/dashboard/stats"),
+  getBookingStats: () => apiClient.get("/api/admin/bookings/stats"),
+
+  // Movies
+  getMovies: (params?: {
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDir?: string;
+  }) => apiClient.get("/api/admin/movies", { params }),
+  createMovie: (data: any) => apiClient.post("/api/admin/movies", data),
+  updateMovie: (id: string, data: any) =>
+    apiClient.put(`/api/admin/movies/${id}`, data),
+  deleteMovie: (id: string) => apiClient.delete(`/api/admin/movies/${id}`),
+  toggleMovieActive: (id: string) =>
+    apiClient.patch(`/api/admin/movies/${id}/toggle-active`),
+
+  // Shows
+  getShows: (params?: {
+    page?: number;
+    size?: number;
+    movieId?: string;
+    screenId?: string;
+    date?: string;
+  }) => apiClient.get("/api/admin/shows", { params }),
+  createShow: (data: any) => apiClient.post("/api/admin/shows", data),
+  updateShow: (id: string, data: any) =>
+    apiClient.put(`/api/admin/shows/${id}`, data),
+  deleteShow: (id: string) => apiClient.delete(`/api/admin/shows/${id}`),
+  bulkCreateShows: (data: any[]) =>
+    apiClient.post("/api/admin/shows/bulk", data),
+
+  // Theaters
+  getTheaters: () => apiClient.get("/api/admin/theaters"),
+  createTheater: (data: any) => apiClient.post("/api/admin/theaters", data),
+  updateTheater: (id: string, data: any) =>
+    apiClient.put(`/api/admin/theaters/${id}`, data),
+  deleteTheater: (id: string) => apiClient.delete(`/api/admin/theaters/${id}`),
+  getScreens: (theaterId: string) =>
+    apiClient.get(`/api/admin/theaters/${theaterId}/screens`),
+  createScreen: (data: any) =>
+    apiClient.post("/api/admin/theaters/screens", data),
+  getCities: () => apiClient.get("/api/admin/theaters/cities"),
+
+  // Bookings
+  getBookings: (params?: {
+    page?: number;
+    size?: number;
+    status?: string;
+    search?: string;
+  }) => apiClient.get("/api/admin/bookings", { params }),
+  getBookingsByDate: (
+    startDate: string,
+    endDate: string,
+    page?: number,
+    size?: number,
+  ) =>
+    apiClient.get("/api/admin/bookings/by-date", {
+      params: { startDate, endDate, page, size },
+    }),
+  cancelBooking: (id: string, reason?: string) =>
+    apiClient.post(`/api/admin/bookings/${id}/cancel`, { reason }),
+
+  // Cache Management
+  getCacheStatus: () => apiClient.get("/api/admin/cache/status"),
+  clearCache: (cacheName: string) =>
+    apiClient.delete(`/api/admin/cache/${cacheName}`),
+  clearAllCaches: () => apiClient.delete("/api/admin/cache"),
+};
+
 export default apiClient;

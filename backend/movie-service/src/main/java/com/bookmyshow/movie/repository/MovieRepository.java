@@ -16,6 +16,8 @@ import java.util.UUID;
 public interface MovieRepository extends JpaRepository<Movie, UUID> {
 
     Page<Movie> findByIsActiveTrue(Pageable pageable);
+    
+    long countByIsActiveTrue();
 
     @Query("SELECT DISTINCT m FROM Movie m JOIN Show s ON s.movie = m " +
            "JOIN Screen sc ON s.screen = sc " +

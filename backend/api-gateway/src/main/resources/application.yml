@@ -34,6 +34,38 @@ spring:
           predicates:
             - Path=/layouts/**
 
+        # Admin Routes - Movie Service
+        - id: admin-dashboard
+          uri: http://${MOVIE_SERVICE_HOST:localhost}:${MOVIE_SERVICE_PORT:8085}
+          predicates:
+            - Path=/api/admin/dashboard/**
+
+        - id: admin-movies
+          uri: http://${MOVIE_SERVICE_HOST:localhost}:${MOVIE_SERVICE_PORT:8085}
+          predicates:
+            - Path=/api/admin/movies/**
+
+        - id: admin-shows
+          uri: http://${MOVIE_SERVICE_HOST:localhost}:${MOVIE_SERVICE_PORT:8085}
+          predicates:
+            - Path=/api/admin/shows/**
+
+        - id: admin-theaters
+          uri: http://${MOVIE_SERVICE_HOST:localhost}:${MOVIE_SERVICE_PORT:8085}
+          predicates:
+            - Path=/api/admin/theaters/**
+
+        - id: admin-cache
+          uri: http://${MOVIE_SERVICE_HOST:localhost}:${MOVIE_SERVICE_PORT:8085}
+          predicates:
+            - Path=/api/admin/cache/**
+
+        # Admin Routes - Booking Service
+        - id: admin-bookings
+          uri: http://${BOOKING_SERVICE_HOST:localhost}:${BOOKING_SERVICE_PORT:8083}
+          predicates:
+            - Path=/api/admin/bookings/**
+
         # Booking Service Routes
         - id: booking-service
           uri: http://${BOOKING_SERVICE_HOST:localhost}:${BOOKING_SERVICE_PORT:8083}
